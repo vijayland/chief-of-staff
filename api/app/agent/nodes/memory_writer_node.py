@@ -1,9 +1,11 @@
 """Memory writer node — extracts and persists memories after every agent turn."""
 
 import json
+
 import structlog
-from app.agent.state import AgentState
+
 from app.agent.prompts.system import MEMORY_EXTRACTION_SYSTEM
+from app.agent.state import AgentState
 from app.integrations.llm.client import chat_completion
 from app.memory.manager import MemoryManager
 

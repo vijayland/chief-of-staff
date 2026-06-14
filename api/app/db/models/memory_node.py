@@ -1,13 +1,16 @@
-import uuid
-from sqlalchemy import String, Text, Float, ForeignKey, Enum as SAEnum
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from pgvector.sqlalchemy import Vector
-from app.db.base import Base, TimestampMixin, UUIDMixin
 import enum
+import uuid
+
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy import Float, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db.base import Base, TimestampMixin, UUIDMixin
 
 
-class MemoryType(str, enum.Enum):
+class MemoryType(enum.StrEnum):
     semantic = "semantic"      # facts & preferences
     procedural = "procedural"  # style & tone patterns
     episodic = "episodic"      # raw conversation summaries

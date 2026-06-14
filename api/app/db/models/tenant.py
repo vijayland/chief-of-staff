@@ -1,6 +1,6 @@
-import uuid
-from sqlalchemy import String, Boolean, Text
+from sqlalchemy import Boolean, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.base import Base, TimestampMixin, UUIDMixin
 
 

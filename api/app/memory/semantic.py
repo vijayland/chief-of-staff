@@ -1,11 +1,13 @@
 """Semantic memory — facts, preferences, and beliefs about the user's world."""
 
 import uuid
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import settings
 from app.db.models.memory_node import MemoryNode, MemoryType
 from app.integrations.llm.client import get_embedding
-from app.config import settings
 
 
 async def upsert_fact(

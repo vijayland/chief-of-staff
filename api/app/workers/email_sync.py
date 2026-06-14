@@ -1,19 +1,21 @@
 """Celery task: sync Gmail for all connected users and extract memories."""
 
 import asyncio
-import structlog
-from app.workers.celery_app import celery_app
-from app.db.session import AsyncSessionLocal
-from app.db.models.user import User
-from app.db.models.oauth_token import OAuthToken
-from app.core.security import decrypt_value
-from app.integrations.google.oauth import build_credentials
-from app.integrations.google.gmail import GmailClient
-from app.memory.manager import MemoryManager
-from app.agent.prompts.system import MEMORY_EXTRACTION_SYSTEM
-from app.integrations.llm.client import chat_completion
-from sqlalchemy import select
 import json
+
+import structlog
+from sqlalchemy import select
+
+from app.agent.prompts.system import MEMORY_EXTRACTION_SYSTEM
+from app.core.security import decrypt_value
+from app.db.models.oauth_token import OAuthToken
+from app.db.models.user import User
+from app.db.session import AsyncSessionLocal
+from app.integrations.google.gmail import GmailClient
+from app.integrations.google.oauth import build_credentials
+from app.integrations.llm.client import chat_completion
+from app.memory.manager import MemoryManager
+from app.workers.celery_app import celery_app
 
 logger = structlog.get_logger()
 
@@ -26,7 +28,7 @@ def sync_all_users_email(self) -> None:
 async def _sync_all() -> None:
     async with AsyncSessionLocal() as db:
         result = await db.execute(
-            select(User).where(User.is_active == True, User.google_connected == True)
+            select(User).where(User.is_active, User.google_connected)
         )
         users = result.scalars().all()
         for user in users:

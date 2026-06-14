@@ -1,13 +1,15 @@
 """Router node — decides whether to call a tool or generate a final response."""
 
 import json
+from datetime import UTC, datetime
+
 import structlog
-from datetime import datetime, timezone
 from openai import BadRequestError
-from app.agent.state import AgentState
+
 from app.agent.prompts.system import CHIEF_OF_STAFF_SYSTEM
-from app.integrations.llm.client import chat_completion
+from app.agent.state import AgentState
 from app.agent.tools import ALL_TOOLS
+from app.integrations.llm.client import chat_completion
 
 logger = structlog.get_logger()
 
@@ -16,7 +18,7 @@ async def router_node(state: AgentState) -> AgentState:
     memory_ctx = state.get("memory_context", "")
     system = CHIEF_OF_STAFF_SYSTEM.format(
         memory_context=memory_ctx or "No prior context available.",
-        current_datetime=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        current_datetime=datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
     )
 
     try:

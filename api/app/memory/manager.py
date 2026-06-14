@@ -2,11 +2,13 @@
 
 import uuid
 from dataclasses import dataclass, field
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.memory import episodic, semantic, procedural, graph_store
+
+from app.config import settings
 from app.db.models.memory_node import MemoryType
 from app.integrations.llm.client import get_embedding
-from app.config import settings
+from app.memory import episodic, graph_store, procedural, semantic
 
 
 @dataclass

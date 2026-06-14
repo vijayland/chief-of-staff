@@ -1,12 +1,11 @@
-import uuid
 import datetime
+
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional
 
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=10_000)
-    conversation_id: Optional[str] = None
+    conversation_id: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -38,7 +37,7 @@ class MessageResponse(BaseModel):
 
 class ConversationResponse(BaseModel):
     id: str
-    title: Optional[str] = None
+    title: str | None = None
     created_at: str
 
     model_config = {"from_attributes": True}

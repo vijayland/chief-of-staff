@@ -63,8 +63,7 @@ function HtmlEmailFrame({ html }: { html: string }) {
     doc.close();
     const resize = () => {
       if (iframe.contentDocument?.body) {
-        iframe.style.height =
-          iframe.contentDocument.body.scrollHeight + 32 + "px";
+        iframe.style.height = `${iframe.contentDocument.body.scrollHeight + 32}px`;
       }
     };
     iframe.onload = resize;
@@ -138,7 +137,7 @@ export function EmailList() {
 
   useEffect(() => {
     load("", null);
-  }, []);
+  }, [load]);
 
   function handleSearch() {
     setPage(1);
@@ -197,11 +196,7 @@ export function EmailList() {
         {/* Email rows */}
         <div className="flex-1 overflow-y-auto bg-white">
           {loading ? (
-            <>
-              {Array.from({ length: 8 }).map((_, i) => (
-                <EmailSkeleton key={i} />
-              ))}
-            </>
+            Array.from({ length: 8 }).map((_, i) => <EmailSkeleton key={i} />)
           ) : emails.length === 0 ? (
             <div className="flex flex-col items-center justify-center pt-16 gap-2">
               <Inbox className="w-8 h-8 text-border-strong" />

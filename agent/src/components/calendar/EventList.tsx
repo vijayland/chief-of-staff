@@ -72,7 +72,7 @@ export function EventList() {
 
   useEffect(() => {
     load(daysAhead);
-  }, [daysAhead]);
+  }, [daysAhead, load]);
 
   async function deleteEvent(id: string) {
     await api.calendar.delete(id);

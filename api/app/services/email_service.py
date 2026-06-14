@@ -1,8 +1,10 @@
 import uuid
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.services.auth_service import get_google_credentials
-from app.integrations.google.gmail import GmailClient
+
 from app.core.exceptions import BadRequestError
+from app.integrations.google.gmail import GmailClient
+from app.services.auth_service import get_google_credentials
 
 
 async def _get_client(db: AsyncSession, user_id: uuid.UUID) -> GmailClient:

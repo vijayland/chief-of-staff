@@ -51,7 +51,7 @@ export default function MemoryPage() {
 
   useEffect(() => {
     loadMemories(filter);
-  }, [filter]);
+  }, [filter, loadMemories]);
 
   async function handleSearch() {
     if (!query.trim()) {

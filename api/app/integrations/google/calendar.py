@@ -1,7 +1,9 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
-from googleapiclient.discovery import build
+
 from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+
 from app.integrations.google.oauth import refresh_credentials
 
 
@@ -16,7 +18,7 @@ class GoogleCalendarClient:
         max_results: int = 20,
         calendar_id: str = "primary",
     ) -> list[dict[str, Any]]:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         time_max = now + timedelta(days=days_ahead)
 
         events_result = (

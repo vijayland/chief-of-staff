@@ -7,8 +7,10 @@ Embed : text-embedding-3-small ($0.02/1M tokens, 1536-dim)
 import asyncio
 import hashlib
 import math
+
 import structlog
 from openai import AsyncOpenAI, BadRequestError, RateLimitError
+
 from app.config import settings
 
 logger = structlog.get_logger()

@@ -1,5 +1,6 @@
+
 from pydantic import BaseModel, Field
-from typing import Optional
+
 from app.db.models.memory_node import MemoryType
 
 
@@ -7,7 +8,7 @@ class MemoryResponse(BaseModel):
     id: str
     memory_type: MemoryType
     content: str
-    source: Optional[str]
+    source: str | None
     importance: float
     access_count: int
     created_at: str

@@ -1,16 +1,18 @@
 """Celery task: sync Google Calendar for all connected users."""
 
 import asyncio
+
 import structlog
-from app.workers.celery_app import celery_app
-from app.db.session import AsyncSessionLocal
-from app.db.models.user import User
-from app.db.models.oauth_token import OAuthToken
-from app.core.security import decrypt_value
-from app.integrations.google.oauth import build_credentials
-from app.integrations.google.calendar import GoogleCalendarClient
-from app.memory.manager import MemoryManager
 from sqlalchemy import select
+
+from app.core.security import decrypt_value
+from app.db.models.oauth_token import OAuthToken
+from app.db.models.user import User
+from app.db.session import AsyncSessionLocal
+from app.integrations.google.calendar import GoogleCalendarClient
+from app.integrations.google.oauth import build_credentials
+from app.memory.manager import MemoryManager
+from app.workers.celery_app import celery_app
 
 logger = structlog.get_logger()
 
@@ -23,7 +25,7 @@ def sync_all_users_calendar(self) -> None:
 async def _sync_all() -> None:
     async with AsyncSessionLocal() as db:
         result = await db.execute(
-            select(User).where(User.is_active == True, User.google_connected == True)
+            select(User).where(User.is_active, User.google_connected)
         )
         users = result.scalars().all()
         for user in users:
@@ -53,7 +55,7 @@ async def _sync_user_calendar(db, user: User) -> None:
         return
 
     mem = MemoryManager(db, user.id, user.tenant_id)
-    summary = f"Upcoming calendar events for the next 14 days: " + ", ".join(
+    summary = "Upcoming calendar events for the next 14 days: " + ", ".join(
         f"{e['title']} on {e['start']}" for e in events[:10]
     )
     await mem.store_episode(summary, source="calendar")

@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
 
 _HERE = Path(__file__).resolve().parent
 _API_DIR = _HERE.parent
@@ -25,16 +25,14 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "http://localhost:3000"
 
     @property
-    def allowed_origins_list(self) -> List[str]:
+    def allowed_origins_list(self) -> list[str]:
         return [o.strip() for o in self.ALLOWED_ORIGINS.split(",")]
 
-    # ── Database ──────────────────────────────────────────────────────────────
+    # ── Database (PostgreSQL + pgvector) ─────────────────────────────────────
     DATABASE_URL: str
 
-    # ── Redis ─────────────────────────────────────────────────────────────────
-    REDIS_URL: str = "redis://redis:6379/0"
-    CELERY_BROKER_URL: str = "redis://redis:6379/1"
-    CELERY_RESULT_BACKEND: str = "redis://redis:6379/2"
+    # ── Redis (session cache + OAuth state) ───────────────────────────────────
+    REDIS_URL: str = ""   # empty = Redis disabled, falls back to in-memory
 
     # ── Neo4j (optional — graph memory) ──────────────────────────────────────
     NEO4J_URI: str = ""       # empty = Neo4j disabled, app still works
@@ -80,7 +78,7 @@ class Settings(BaseSettings):
         return self.APP_ENV == "production"
 
     @property
-    def google_scopes_list(self) -> List[str]:
+    def google_scopes_list(self) -> list[str]:
         raw = self.GOOGLE_SCOPES.replace(",", " ")
         return [s.strip() for s in raw.split() if s.strip()]
 

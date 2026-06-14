@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, func
-from app.dependencies import DBSession, require_admin
+from sqlalchemy import func, select
+
+from app.db.models.memory_node import MemoryNode
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
-from app.db.models.memory_node import MemoryNode
+from app.dependencies import DBSession, require_admin
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 

@@ -2,12 +2,11 @@
 
 import { Bot } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { api } from "@/lib/api";
-import { isAuthenticated } from "@/lib/auth";
 
 export default function LoginPage() {
-  const router = useRouter();
+  const _router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 

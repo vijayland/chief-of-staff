@@ -63,7 +63,7 @@ export function Sidebar({ onClose }: SidebarProps) {
       .then(setConversations)
       .catch(() => null)
       .finally(() => setLoadingConvs(false));
-  }, [isChat, refreshTrigger]);
+  }, [isChat]);
 
   function logout() {
     clearTokens();

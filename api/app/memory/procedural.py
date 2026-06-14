@@ -1,9 +1,11 @@
 """Procedural memory — communication style, tone, and behavioural patterns."""
 
 import uuid
+
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.db.models.memory_node import MemoryNode, MemoryType
-from app.memory.semantic import upsert_fact, search_similar
+from app.memory.semantic import search_similar
 
 
 async def record_style_pattern(

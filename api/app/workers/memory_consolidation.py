@@ -1,12 +1,14 @@
 """Celery task: nightly memory consolidation — prune low-importance, duplicate memories."""
 
 import asyncio
+
 import structlog
-from app.workers.celery_app import celery_app
-from app.db.session import AsyncSessionLocal
-from app.db.models.memory_node import MemoryNode
-from sqlalchemy import select, delete
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models.memory_node import MemoryNode
+from app.db.session import AsyncSessionLocal
+from app.workers.celery_app import celery_app
 
 logger = structlog.get_logger()
 
@@ -23,7 +25,7 @@ async def _consolidate_all() -> None:
     async with AsyncSessionLocal() as db:
         # Get distinct user IDs that have memories
         from sqlalchemy import distinct
-        from app.db.models.user import User
+
         result = await db.execute(select(distinct(MemoryNode.user_id)))
         user_ids = [row[0] for row in result.fetchall()]
 

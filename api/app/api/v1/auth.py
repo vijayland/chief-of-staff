@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Query
 from fastapi.responses import RedirectResponse
-from app.dependencies import CurrentUser, DBSession
-from app.schemas.auth import TokenResponse, UserResponse, GoogleAuthURLResponse
-from app.services import auth_service
-from app.core.security import decode_token, create_access_token, create_refresh_token
-from app.core.exceptions import UnauthorizedError
+
 from app.config import settings
+from app.core.exceptions import UnauthorizedError
+from app.core.security import create_access_token, create_refresh_token, decode_token
+from app.dependencies import CurrentUser, DBSession
+from app.schemas.auth import GoogleAuthURLResponse, TokenResponse, UserResponse
+from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -50,8 +51,8 @@ async def refresh_token(body: dict):
     token = body.get("refresh_token", "")
     try:
         payload = decode_token(token)
-    except ValueError:
-        raise UnauthorizedError("Invalid refresh token")
+    except ValueError as err:
+        raise UnauthorizedError("Invalid refresh token") from err
 
     if payload.get("type") != "refresh":
         raise UnauthorizedError("Expected refresh token")

@@ -1,15 +1,13 @@
 import os
-from google_auth_oauthlib.flow import Flow
-from google.oauth2.credentials import Credentials
+
 from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import Flow
+
 from app.config import settings
+from app.core import cache
 
-# Allow Google to return expanded scopes (e.g. email → userinfo.email)
 os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
-
-# In-memory store for PKCE code verifiers keyed by OAuth state
-# (use Redis in production for multi-process deployments)
-_code_verifiers: dict[str, str] = {}
 
 
 def _client_config() -> dict:
@@ -35,23 +33,23 @@ def build_flow(state: str | None = None, pkce: bool = False) -> Flow:
     return flow
 
 
-def get_authorization_url() -> tuple[str, str]:
-    # Build flow with PKCE enabled so Google accepts the request
+async def get_authorization_url() -> tuple[str, str]:
     flow = build_flow(pkce=True)
     url, state = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
         prompt="consent",
     )
-    # Persist verifier so exchange_code can retrieve it by state
+    # Store PKCE verifier in Redis (TTL 10 min) — safe across multiple workers
     if flow.code_verifier:
-        _code_verifiers[state] = flow.code_verifier
+        await cache.set_oauth_state(state, flow.code_verifier)
     return url, state
 
 
-def exchange_code(code: str, state: str) -> dict:
+async def exchange_code(code: str, state: str) -> dict:
     flow = build_flow(state=state)
-    code_verifier = _code_verifiers.pop(state, None)
+    # Retrieve and delete verifier from Redis (one-time use)
+    code_verifier = await cache.get_oauth_state(state)
     flow.fetch_token(code=code, code_verifier=code_verifier)
     creds = flow.credentials
     return {

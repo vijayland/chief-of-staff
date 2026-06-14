@@ -5,23 +5,25 @@ Send:    {"message": "...", "conversation_id": "optional-uuid"}
 Receive: {"type": "token", "content": "..."} chunks + {"type": "done", "conversation_id": "..."}
 """
 
-import uuid
 import json
+import uuid
+
 import structlog
 from fastapi import WebSocket, WebSocketDisconnect
-from openai import RateLimitError, APIStatusError
-from sqlalchemy.ext.asyncio import AsyncSession
+from openai import APIStatusError, RateLimitError
 from sqlalchemy import select
-from app.db.session import AsyncSessionLocal
-from app.core.security import decode_token
-from app.db.models.user import User
-from app.services.auth_service import get_google_credentials
-from app.services.chat_service import get_or_create_conversation, get_conversation_history
-from app.db.models.conversation import Message
-from app.memory.manager import MemoryManager
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.agent.graph import run_agent
-from app.integrations.google.gmail import GmailClient
+from app.core.security import decode_token
+from app.db.models.conversation import Message
+from app.db.models.user import User
+from app.db.session import AsyncSessionLocal
 from app.integrations.google.calendar import GoogleCalendarClient
+from app.integrations.google.gmail import GmailClient
+from app.memory.manager import MemoryManager
+from app.services.auth_service import get_google_credentials
+from app.services.chat_service import get_conversation_history, get_or_create_conversation
 
 logger = structlog.get_logger()
 
@@ -29,14 +31,14 @@ logger = structlog.get_logger()
 async def _authenticate_ws(token: str, db: AsyncSession) -> User:
     try:
         payload = decode_token(token)
-    except ValueError:
-        raise WebSocketDisconnect(code=4001, reason="Invalid token")
+    except ValueError as err:
+        raise WebSocketDisconnect(code=4001, reason="Invalid token") from err
 
     if payload.get("type") != "access":
         raise WebSocketDisconnect(code=4001, reason="Expected access token")
 
     result = await db.execute(
-        select(User).where(User.id == payload["sub"], User.is_active == True)
+        select(User).where(User.id == payload["sub"], User.is_active)
     )
     user = result.scalar_one_or_none()
     if not user:

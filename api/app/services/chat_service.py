@@ -1,13 +1,15 @@
 import uuid
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.agent.graph import run_agent
 from app.db.models.conversation import Conversation, Message
 from app.db.models.user import User
-from app.memory.manager import MemoryManager
-from app.agent.graph import run_agent
-from app.services.auth_service import get_google_credentials
-from app.integrations.google.gmail import GmailClient
 from app.integrations.google.calendar import GoogleCalendarClient
+from app.integrations.google.gmail import GmailClient
+from app.memory.manager import MemoryManager
+from app.services.auth_service import get_google_credentials
 
 
 async def get_or_create_conversation(

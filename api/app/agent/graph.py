@@ -3,14 +3,16 @@
 import asyncio
 import uuid
 from functools import partial
-from langgraph.graph import StateGraph, END
-from app.agent.state import AgentState
-from app.agent.nodes.router_node import router_node
+
+from langgraph.graph import END, StateGraph
+
 from app.agent.nodes.executor_node import executor_node
 from app.agent.nodes.memory_writer_node import memory_writer_node
-from app.memory.manager import MemoryManager
-from app.integrations.google.gmail import GmailClient
+from app.agent.nodes.router_node import router_node
+from app.agent.state import AgentState
 from app.integrations.google.calendar import GoogleCalendarClient
+from app.integrations.google.gmail import GmailClient
+from app.memory.manager import MemoryManager
 
 
 def _should_continue(state: AgentState) -> str:
@@ -94,8 +96,8 @@ async def run_agent(
             from app.db.session import AsyncSessionLocal
             episode_summary = f"User asked: {user_message[:200]}. Agent replied: {final_state['final_response'][:200]}"
             async with AsyncSessionLocal() as db:
-                from app.memory.manager import MemoryManager as _MM
-                mem = _MM(db, user_id, tenant_id)
+                from app.memory.manager import MemoryManager
+                mem = MemoryManager(db, user_id, tenant_id)
                 await mem.store_episode(episode_summary)
                 await db.commit()
         except Exception as exc:

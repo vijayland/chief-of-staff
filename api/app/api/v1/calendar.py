@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query
+
 from app.dependencies import CurrentUser, DBSession
-from app.schemas.calendar import CreateEventRequest, UpdateEventRequest, EventResponse
+from app.schemas.calendar import CreateEventRequest, UpdateEventRequest
 from app.services import calendar_service
 
 router = APIRouter(prefix="/calendar", tags=["Calendar"])

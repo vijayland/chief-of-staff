@@ -1,8 +1,10 @@
 """Episodic memory — stores raw conversation summaries per user."""
 
 import uuid
+
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+
 from app.db.models.memory_node import MemoryNode, MemoryType
 from app.integrations.llm.client import get_embedding
 

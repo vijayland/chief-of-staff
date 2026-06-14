@@ -1,9 +1,11 @@
 import uuid
+
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+
+from app.core.exceptions import NotFoundError
 from app.db.models.memory_node import MemoryNode, MemoryType
 from app.memory.semantic import search_similar
-from app.core.exceptions import NotFoundError
 
 
 async def list_memories(

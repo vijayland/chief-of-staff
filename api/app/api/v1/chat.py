@@ -1,12 +1,19 @@
 import uuid
+
 from fastapi import APIRouter
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-from app.dependencies import CurrentUser, DBSession
-from app.schemas.chat import ChatRequest, ChatResponse, ConversationResponse, ConversationDetailResponse, MessageResponse
-from app.services import chat_service
-from app.db.models.conversation import Conversation, Message
+
 from app.core.exceptions import NotFoundError
+from app.db.models.conversation import Conversation
+from app.dependencies import CurrentUser, DBSession
+from app.schemas.chat import (
+    ChatRequest,
+    ChatResponse,
+    ConversationDetailResponse,
+    ConversationResponse,
+)
+from app.services import chat_service
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -35,7 +42,7 @@ async def list_conversations(current_user: CurrentUser, db: DBSession, limit: in
     """Return the most recent conversations for the current user, newest first."""
     result = await db.execute(
         select(Conversation)
-        .where(Conversation.user_id == current_user.id, Conversation.is_active == True)
+        .where(Conversation.user_id == current_user.id, Conversation.is_active)
         .order_by(Conversation.created_at.desc())
         .limit(limit)
     )

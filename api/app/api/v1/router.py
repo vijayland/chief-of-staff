@@ -1,5 +1,6 @@
 from fastapi import APIRouter
-from app.api.v1 import auth, chat, email, calendar, memory, admin
+
+from app.api.v1 import admin, auth, calendar, chat, email, memory
 
 api_router = APIRouter()
 

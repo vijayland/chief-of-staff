@@ -1,6 +1,7 @@
 """AgentState — the typed state that flows through every LangGraph node."""
 
 from typing import Any
+
 from typing_extensions import TypedDict
 
 

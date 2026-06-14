@@ -1,11 +1,12 @@
 import base64
-from typing import Any
-from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
-from app.integrations.google.oauth import refresh_credentials
-import email as email_lib
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from typing import Any
+
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+
+from app.integrations.google.oauth import refresh_credentials
 
 
 class GmailClient:

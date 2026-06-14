@@ -1,12 +1,14 @@
 from typing import Annotated
+
 from fastapi import Depends, Header
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.session import get_db
-from app.core.security import decode_token
-from app.core.exceptions import UnauthorizedError, ForbiddenError
-from app.db.models.user import User
-from app.db.models.tenant import Tenant
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import ForbiddenError, UnauthorizedError
+from app.core.security import decode_token
+from app.db.models.tenant import Tenant
+from app.db.models.user import User
+from app.db.session import get_db
 
 
 async def get_current_user(
@@ -19,14 +21,14 @@ async def get_current_user(
     token = authorization.removeprefix("Bearer ").strip()
     try:
         payload = decode_token(token)
-    except ValueError:
-        raise UnauthorizedError("Invalid or expired token")
+    except ValueError as err:
+        raise UnauthorizedError("Invalid or expired token") from err
 
     if payload.get("type") != "access":
         raise UnauthorizedError("Expected access token")
 
     user_id = payload.get("sub")
-    result = await db.execute(select(User).where(User.id == user_id, User.is_active == True))
+    result = await db.execute(select(User).where(User.id == user_id, User.is_active))
     user = result.scalar_one_or_none()
 
     if not user:

@@ -1,11 +1,16 @@
 import uuid
+
 from fastapi import APIRouter, Query
+
+from app.db.models.memory_node import MemoryType
 from app.dependencies import CurrentUser, DBSession
 from app.schemas.memory import (
-    MemoryResponse, MemorySearchRequest, MemorySearchResult, UpdateMemoryRequest
+    MemoryResponse,
+    MemorySearchRequest,
+    MemorySearchResult,
+    UpdateMemoryRequest,
 )
 from app.services import memory_service
-from app.db.models.memory_node import MemoryType
 
 router = APIRouter(prefix="/memory", tags=["Memory"])
 

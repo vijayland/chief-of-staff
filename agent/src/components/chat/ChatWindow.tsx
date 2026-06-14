@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Spinner } from "@/components/ui/Spinner";
 import { api } from "@/lib/api";
 import { ChatSocket } from "@/lib/ws";
 import type { Message } from "@/types";
@@ -25,7 +24,7 @@ export function ChatWindow({
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [activeConvId, setActiveConvId] = useState(conversationId);
   const wsRef = useRef<ChatSocket | null>(null);
-  const [wsConnected, setWsConnected] = useState(false);
+  const [_wsConnected, setWsConnected] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const hasSentRef = useRef(false);
   // Tracks whether the next conversationId change is from a freshly created conversation
@@ -75,7 +74,7 @@ export function ChatWindow({
   // Scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streaming]);
+  }, []);
 
   // Init WebSocket once — auto-reconnects on drop, destroyed on unmount
   useEffect(() => {

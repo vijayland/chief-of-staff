@@ -1,11 +1,12 @@
-from fastapi import FastAPI, WebSocket, Query
-from fastapi.security import HTTPBearer
+from fastapi import FastAPI, Query, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer
+
+from app.api.v1.router import api_router
 from app.config import settings
 from app.core.events import lifespan
 from app.core.logging import configure_logging
 from app.core.middleware import RequestContextMiddleware
-from app.api.v1.router import api_router
 from app.websocket.chat_ws import chat_websocket_handler
 
 configure_logging(json_logs=settings.is_production)

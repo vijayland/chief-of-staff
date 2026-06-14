@@ -1,5 +1,5 @@
-from app.agent.tools.gmail_tools import GMAIL_TOOL_SCHEMAS
 from app.agent.tools.calendar_tools import CALENDAR_TOOL_SCHEMAS
+from app.agent.tools.gmail_tools import GMAIL_TOOL_SCHEMAS
 from app.agent.tools.memory_tools import MEMORY_TOOL_SCHEMAS
 
 # Memory tools are handled automatically by the graph infrastructure:

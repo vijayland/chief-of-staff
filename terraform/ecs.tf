@@ -69,6 +69,7 @@ resource "aws_ecs_task_definition" "api" {
       { name = "ENCRYPTION_KEY",       valueFrom = aws_ssm_parameter.encryption_key.arn },
       { name = "GOOGLE_CLIENT_ID",     valueFrom = aws_ssm_parameter.google_client_id.arn },
       { name = "GOOGLE_CLIENT_SECRET", valueFrom = aws_ssm_parameter.google_client_secret.arn },
+      { name = "REDIS_URL",            valueFrom = aws_ssm_parameter.redis_url.arn },
     ]
 
     logConfiguration = {
@@ -164,6 +165,7 @@ resource "aws_iam_role_policy" "ecs_ssm" {
         aws_ssm_parameter.encryption_key.arn,
         aws_ssm_parameter.google_client_id.arn,
         aws_ssm_parameter.google_client_secret.arn,
+        aws_ssm_parameter.redis_url.arn,
       ]
     }]
   })

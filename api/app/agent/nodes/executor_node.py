@@ -1,10 +1,10 @@
 """Executor node — runs tool calls and feeds results back into the message stream."""
 
 import json
-from datetime import datetime, timezone
+
 from app.agent.state import AgentState
-from app.integrations.google.gmail import GmailClient
 from app.integrations.google.calendar import GoogleCalendarClient
+from app.integrations.google.gmail import GmailClient
 from app.memory.manager import MemoryManager
 
 

@@ -1,19 +1,21 @@
 import uuid
+from datetime import datetime
+
 import httpx
-from datetime import datetime, timezone
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.db.models.user import User
-from app.db.models.tenant import Tenant
-from app.db.models.oauth_token import OAuthToken
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.security import (
-    create_access_token, create_refresh_token,
-    encrypt_value, decrypt_value,
+    create_access_token,
+    create_refresh_token,
+    decrypt_value,
+    encrypt_value,
 )
-from app.core.exceptions import UnauthorizedError
+from app.db.models.oauth_token import OAuthToken
+from app.db.models.tenant import Tenant
+from app.db.models.user import User
 from app.integrations.google import oauth as google_oauth
 from app.integrations.google.oauth import build_credentials
-
 
 
 def issue_tokens(user: User) -> dict:
@@ -25,7 +27,7 @@ def issue_tokens(user: User) -> dict:
 
 
 async def get_google_auth_url() -> dict:
-    url, state = google_oauth.get_authorization_url()
+    url, state = await google_oauth.get_authorization_url()
     return {"url": url, "state": state}
 
 
@@ -45,7 +47,7 @@ async def handle_google_login(db: AsyncSession, code: str, state: str) -> dict:
     Full Google login flow — works for both first-time and returning users.
     Returns JWT tokens ready to send to the frontend.
     """
-    token_data = google_oauth.exchange_code(code, state)
+    token_data = await google_oauth.exchange_code(code, state)
     profile = await _get_google_profile(token_data["access_token"])
 
     email: str = profile["email"]

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query
+
 from app.dependencies import CurrentUser, DBSession
-from app.schemas.email import SendEmailRequest, DraftEmailRequest, EmailResponse
+from app.schemas.email import DraftEmailRequest, SendEmailRequest
 from app.services import email_service
 
 router = APIRouter(prefix="/email", tags=["Email"])

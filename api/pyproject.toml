@@ -57,12 +57,15 @@ build-backend = "hatchling.build"
 packages = ["app"]
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B"]
-ignore = ["B008"]
+# B008: FastAPI Depends() as default arg (intentional)
+# E501: Long lines in tool schema strings / docstrings — not worth wrapping
+# F821: SQLAlchemy forward refs (e.g. Mapped["User"]) work at runtime
+ignore = ["B008", "E501", "F821"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

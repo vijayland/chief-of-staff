@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional
+
+from pydantic import BaseModel, Field
 
 
 class CreateEventRequest(BaseModel):
@@ -12,10 +12,10 @@ class CreateEventRequest(BaseModel):
 
 
 class UpdateEventRequest(BaseModel):
-    title: Optional[str] = None
-    start: Optional[datetime] = None
-    end: Optional[datetime] = None
-    description: Optional[str] = None
+    title: str | None = None
+    start: datetime | None = None
+    end: datetime | None = None
+    description: str | None = None
 
 
 class EventResponse(BaseModel):
@@ -27,4 +27,4 @@ class EventResponse(BaseModel):
     attendees: list[str]
     location: str
     html_link: str
-    status: Optional[str]
+    status: str | None
