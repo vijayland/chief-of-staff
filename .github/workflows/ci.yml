@@ -65,7 +65,9 @@ jobs:
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
-        run: uv pip install --system -e ".[dev]"
+        run: |
+          uv pip install --system -e ".[dev]"
+          uv pip install --system ruff
 
       - name: Lint (ruff)
         run: ruff check app/
