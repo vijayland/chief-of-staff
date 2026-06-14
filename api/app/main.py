@@ -1,5 +1,8 @@
-from fastapi import FastAPI, Query, WebSocket
+import logging
+
+from fastapi import FastAPI, Query, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer
 
 from app.api.v1.router import api_router
@@ -8,6 +11,8 @@ from app.core.events import lifespan
 from app.core.logging import configure_logging
 from app.core.middleware import RequestContextMiddleware
 from app.websocket.chat_ws import chat_websocket_handler
+
+logger = logging.getLogger(__name__)
 
 configure_logging(json_logs=settings.is_production)
 
@@ -70,6 +75,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
 
 app.include_router(api_router, prefix="/api/v1")
 

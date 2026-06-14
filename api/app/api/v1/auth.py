@@ -2,7 +2,7 @@ from fastapi import APIRouter, Query
 from fastapi.responses import RedirectResponse
 
 from app.config import settings
-from app.core.exceptions import UnauthorizedError
+from app.core.exceptions import GoogleAuthError, UnauthorizedError
 from app.core.security import create_access_token, create_refresh_token, decode_token
 from app.dependencies import CurrentUser, DBSession
 from app.schemas.auth import GoogleAuthURLResponse, TokenResponse, UserResponse
@@ -22,7 +22,10 @@ async def google_auth_url():
     Grants access to Gmail and Google Calendar.
     After approval, Google redirects to `/auth/google/callback` with tokens.
     """
-    return await auth_service.get_google_auth_url()
+    try:
+        return await auth_service.get_google_auth_url()
+    except Exception as exc:
+        raise GoogleAuthError(f"Failed to build Google OAuth URL: {exc}") from exc
 
 
 @router.get("/google/callback", include_in_schema=False)

@@ -59,19 +59,25 @@ async def set(key: str, value: Any, ttl_seconds: int = 300) -> None:
     data = json.dumps(value)
     r = _get_redis()
     if r:
-        await r.set(key, data, ex=ttl_seconds)
-    else:
-        _memory_store[key] = data
+        try:
+            await r.set(key, data, ex=ttl_seconds)
+            return
+        except Exception as exc:
+            logger.warning("Redis set failed, falling back to memory: %s", exc)
+    _memory_store[key] = data
 
 
 async def get(key: str) -> Any | None:
     """Retrieve a value. Returns None if missing or expired."""
     r = _get_redis()
     if r:
-        raw = await r.get(key)
-    else:
-        raw = _memory_store.get(key)
-
+        try:
+            raw = await r.get(key)
+            if raw is not None:
+                return json.loads(raw)
+        except Exception as exc:
+            logger.warning("Redis get failed, falling back to memory: %s", exc)
+    raw = _memory_store.get(key)
     if raw is None:
         return None
     return json.loads(raw)
@@ -80,9 +86,11 @@ async def get(key: str) -> Any | None:
 async def delete(key: str) -> None:
     r = _get_redis()
     if r:
-        await r.delete(key)
-    else:
-        _memory_store.pop(key, None)
+        try:
+            await r.delete(key)
+        except Exception as exc:
+            logger.warning("Redis delete failed, falling back to memory: %s", exc)
+    _memory_store.pop(key, None)
 
 
 # ── Namespaced helpers ────────────────────────────────────────────────────────
