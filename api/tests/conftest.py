@@ -5,7 +5,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.core.security import hash_password
+from app.core.security import create_access_token
 from app.db.base import Base
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
@@ -63,7 +63,7 @@ async def user(db: AsyncSession, tenant: Tenant) -> User:
         tenant_id=tenant.id,
         email="testuser@example.com",
         full_name="Test User",
-        hashed_password=hash_password("password123"),
+        hashed_password="not-used-in-tests",
     )
     db.add(u)
     await db.flush()
@@ -71,10 +71,6 @@ async def user(db: AsyncSession, tenant: Tenant) -> User:
 
 
 @pytest.fixture
-async def auth_headers(client, user: User) -> dict:
-    resp = await client.post("/api/v1/auth/login", json={
-        "email": "testuser@example.com",
-        "password": "password123",
-    })
-    token = resp.json()["access_token"]
+async def auth_headers(user: User) -> dict:
+    token = create_access_token(str(user.id))
     return {"Authorization": f"Bearer {token}"}
