@@ -1,26 +1,20 @@
 # GitHub Actions OIDC — lets CI authenticate to AWS without static access keys
 # This creates:
-#   - An OIDC identity provider for token.actions.githubusercontent.com
 #   - An IAM role that GitHub Actions can assume (scoped to this repo's main branch)
 #
-# Usage in GitHub Actions:
-#   permissions: { id-token: write, contents: read }
-#   uses: aws-actions/configure-aws-credentials@v4
-#   with: { role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}, aws-region: us-east-1 }
-#
-# After first `terraform apply`, copy the output `deploy_role_arn` into
-# the GitHub repo secret AWS_DEPLOY_ROLE_ARN.
+# NOTE: The OIDC provider for token.actions.githubusercontent.com is a singleton
+# per AWS account — we reference the existing one via data source instead of
+# trying to create it (which fails with 409 if already present).
 
 variable "github_repo" {
-  description = "GitHub repo in owner/name format (e.g. vijayethuraj/chief-of-staff)"
+  description = "GitHub repo in owner/name format (e.g. vijayland/chief-of-staff)"
   type        = string
-  default     = "vijayethuraj/chief-of-staff"
+  default     = "vijayland/chief-of-staff"
 }
 
-resource "aws_iam_openid_connect_provider" "github" {
-  url             = "https://token.actions.githubusercontent.com"
-  client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
+# Reference existing OIDC provider — only one can exist per account
+data "aws_iam_openid_connect_provider" "github" {
+  url = "https://token.actions.githubusercontent.com"
 }
 
 resource "aws_iam_role" "github_deploy" {
@@ -31,7 +25,7 @@ resource "aws_iam_role" "github_deploy" {
     Statement = [{
       Effect = "Allow"
       Principal = {
-        Federated = aws_iam_openid_connect_provider.github.arn
+        Federated = data.aws_iam_openid_connect_provider.github.arn
       }
       Action = "sts:AssumeRoleWithWebIdentity"
       Condition = {
@@ -47,7 +41,7 @@ resource "aws_iam_role" "github_deploy" {
   })
 }
 
-# Inline policy — all permissions CI/CD needs
+# Inline policy — all permissions CI/CD + Terraform need
 resource "aws_iam_role_policy" "github_deploy" {
   name = "${var.app_name}-github-deploy-policy"
   role = aws_iam_role.github_deploy.id
@@ -64,76 +58,76 @@ resource "aws_iam_role_policy" "github_deploy" {
       {
         Effect = "Allow"
         Action = [
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:BatchGetImage",
-          "ecr:InitiateLayerUpload",
-          "ecr:UploadLayerPart",
-          "ecr:CompleteLayerUpload",
-          "ecr:PutImage",
+          "ecr:*",
         ]
-        Resource = aws_ecr_repository.api.arn
+        Resource = "*"
       },
-      # ECS — force deploy
+      # ECS — create cluster, services, task definitions, force deploy
       {
-        Effect = "Allow"
-        Action = [
-          "ecs:UpdateService",
-          "ecs:DescribeServices",
-          "ecs:RegisterTaskDefinition",
-          "ecs:DescribeTaskDefinition",
-        ]
+        Effect   = "Allow"
+        Action   = ["ecs:*"]
         Resource = "*"
       },
       {
         Effect   = "Allow"
-        Action   = ["iam:PassRole"]
-        Resource = aws_iam_role.ecs_execution.arn
+        Action   = ["iam:PassRole", "iam:CreateRole", "iam:DeleteRole",
+                    "iam:GetRole", "iam:AttachRolePolicy", "iam:DetachRolePolicy",
+                    "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:GetRolePolicy",
+                    "iam:ListAttachedRolePolicies", "iam:ListRolePolicies",
+                    "iam:TagRole", "iam:UntagRole", "iam:CreateInstanceProfile",
+                    "iam:DeleteInstanceProfile", "iam:AddRoleToInstanceProfile",
+                    "iam:RemoveRoleFromInstanceProfile", "iam:GetInstanceProfile",
+                    "iam:CreateOpenIDConnectProvider", "iam:GetOpenIDConnectProvider",
+                    "iam:DeleteOpenIDConnectProvider", "iam:TagOpenIDConnectProvider"]
+        Resource = "*"
       },
-      # S3 — sync frontend
-      {
-        Effect = "Allow"
-        Action = ["s3:PutObject", "s3:DeleteObject", "s3:ListBucket", "s3:GetObject"]
-        Resource = [
-          aws_s3_bucket.web.arn,
-          "${aws_s3_bucket.web.arn}/*",
-          aws_s3_bucket.lambda_code.arn,
-          "${aws_s3_bucket.lambda_code.arn}/*",
-        ]
-      },
-      # CloudFront — cache invalidation
+      # EC2 / VPC — full access for Terraform networking
       {
         Effect   = "Allow"
-        Action   = ["cloudfront:CreateInvalidation"]
-        Resource = aws_cloudfront_distribution.web.arn
+        Action   = ["ec2:*"]
+        Resource = "*"
       },
-      # Lambda — update function code
+      # S3 — sync frontend + lambda code + terraform state
       {
-        Effect = "Allow"
-        Action = [
-          "lambda:UpdateFunctionCode",
-          "lambda:GetFunction",
-        ]
-        Resource = [
-          aws_lambda_function.email_sync.arn,
-          aws_lambda_function.calendar_sync.arn,
-          aws_lambda_function.memory_consolidation.arn,
-        ]
+        Effect   = "Allow"
+        Action   = ["s3:*"]
+        Resource = "*"
+      },
+      # CloudFront — distributions + cache invalidation
+      {
+        Effect   = "Allow"
+        Action   = ["cloudfront:*"]
+        Resource = "*"
+      },
+      # Lambda — create/update functions
+      {
+        Effect   = "Allow"
+        Action   = ["lambda:*"]
+        Resource = "*"
+      },
+      # EventBridge — schedule rules (requires events:TagResource for default_tags)
+      {
+        Effect   = "Allow"
+        Action   = ["events:*"]
+        Resource = "*"
+      },
+      # ElastiCache — Redis cluster
+      {
+        Effect   = "Allow"
+        Action   = ["elasticache:*"]
+        Resource = "*"
+      },
+      # CloudWatch Logs — ECS + Lambda log groups
+      {
+        Effect   = "Allow"
+        Action   = ["logs:*"]
+        Resource = "*"
       },
       # SSM — Terraform reads/writes secrets
       {
         Effect   = "Allow"
-        Action   = ["ssm:GetParameter", "ssm:GetParameters", "ssm:PutParameter", "ssm:DeleteParameter"]
-        Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.app_name}/*"
-      },
-      # Terraform state backend
-      {
-        Effect   = "Allow"
-        Action   = ["s3:GetObject", "s3:PutObject", "s3:ListBucket"]
-        Resource = [
-          "arn:aws:s3:::chief-of-staff-terraform-state",
-          "arn:aws:s3:::chief-of-staff-terraform-state/*",
-        ]
+        Action   = ["ssm:*"]
+        Resource = "*"
       },
     ]
   })
