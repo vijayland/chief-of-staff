@@ -11,10 +11,10 @@ from app.core.security import (
     decrypt_value,
     encrypt_value,
 )
-from app.dependencies import invalidate_user_cache
 from app.db.models.oauth_token import OAuthToken
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
+from app.dependencies import invalidate_user_cache
 from app.integrations.google import oauth as google_oauth
 from app.integrations.google.oauth import build_credentials
 
