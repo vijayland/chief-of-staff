@@ -1,6 +1,5 @@
 """LangGraph state graph — wires together all agent nodes."""
 
-import asyncio
 import uuid
 from functools import partial
 
@@ -90,20 +89,14 @@ async def run_agent(
     compiled = build_graph(runtime_ctx)
     final_state = await compiled.ainvoke(initial_state)
 
-    # Fire-and-forget memory episode storage — don't block the chat response
-    async def _store_episode():
-        try:
-            from app.db.session import AsyncSessionLocal
-            episode_summary = f"User asked: {user_message[:200]}. Agent replied: {final_state['final_response'][:200]}"
-            async with AsyncSessionLocal() as db:
-                from app.memory.manager import MemoryManager
-                mem = MemoryManager(db, user_id, tenant_id)
-                await mem.store_episode(episode_summary)
-                await db.commit()
-        except Exception as exc:
-            import structlog
-            structlog.get_logger().warning("episode_store_failed", error=str(exc)[:200])
-
-    asyncio.create_task(_store_episode())
+    episode_summary = (
+        f"User asked: {user_message[:200]}. "
+        f"Agent replied: {final_state['final_response'][:200]}"
+    )
+    try:
+        await memory_manager.store_episode(episode_summary)
+    except Exception as exc:
+        import structlog
+        structlog.get_logger().warning("episode_store_failed", error=str(exc)[:200])
 
     return final_state
