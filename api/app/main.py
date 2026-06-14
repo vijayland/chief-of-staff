@@ -62,6 +62,7 @@ The agent automatically extracts and stores three memory types:
 # Makes the Authorize button in Swagger accept Bearer tokens
 _bearer = HTTPBearer(auto_error=False)
 
+app.add_middleware(RequestContextMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
@@ -69,7 +70,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(RequestContextMiddleware)
 
 app.include_router(api_router, prefix="/api/v1")
 
