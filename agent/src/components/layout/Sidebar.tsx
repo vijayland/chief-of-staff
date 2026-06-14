@@ -217,34 +217,40 @@ export function Sidebar({ onClose }: SidebarProps) {
                     (activeConvId === NEW_ID && conv.id === NEW_ID);
                   const isPending = conv.id === NEW_ID;
                   return (
-                    <button
+                    <div
                       key={conv.id}
-                      type="button"
-                      disabled={isPending}
-                      onClick={() => {
-                        setActiveConvId(conv.id);
-                        onClose?.();
-                      }}
-                      className={`group flex items-center gap-2 px-2.5 py-2 mx-1 rounded-md w-full text-left transition-all
+                      className={`group relative flex items-center mx-1 rounded-md transition-all
                         ${
                           isActive
-                            ? "bg-white text-text-primary shadow-sm border border-border"
-                            : "hover:bg-surface-hover text-text-secondary hover:text-text-primary"
-                        } ${isPending ? "cursor-default opacity-60" : "cursor-pointer"}`}
+                            ? "bg-white shadow-sm border border-border"
+                            : "hover:bg-surface-hover"
+                        } ${isPending ? "opacity-60" : ""}`}
                     >
-                      <MessageSquare
-                        className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-text-primary" : "text-text-muted"}`}
-                      />
-                      <span
-                        className={`flex-1 truncate text-xs font-medium ${isPending ? "text-text-muted italic" : ""}`}
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => {
+                          setActiveConvId(conv.id);
+                          onClose?.();
+                        }}
+                        className={`flex items-center gap-2 px-2.5 py-2 w-full text-left min-w-0
+                          ${isActive ? "text-text-primary" : "text-text-secondary hover:text-text-primary"}
+                          ${isPending ? "cursor-default" : "cursor-pointer"}`}
                       >
-                        {conv.title ?? "Untitled"}
-                      </span>
+                        <MessageSquare
+                          className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-text-primary" : "text-text-muted"}`}
+                        />
+                        <span
+                          className={`flex-1 truncate text-xs font-medium ${isPending ? "text-text-muted italic" : ""}`}
+                        >
+                          {conv.title ?? "Untitled"}
+                        </span>
+                      </button>
                       <button
                         type="button"
                         disabled={deletingId === conv.id}
                         onClick={(e) => deleteConv(e, conv.id)}
-                        className="opacity-0 group-hover:opacity-100 p-0.5 rounded
+                        className="opacity-0 group-hover:opacity-100 shrink-0 p-1 mr-1 rounded
                           text-text-muted hover:text-danger transition-all disabled:opacity-50"
                       >
                         {deletingId === conv.id ? (
@@ -253,7 +259,7 @@ export function Sidebar({ onClose }: SidebarProps) {
                           <Trash2 className="w-3 h-3" />
                         )}
                       </button>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
