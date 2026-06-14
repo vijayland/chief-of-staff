@@ -1,16 +1,22 @@
 import asyncio
+import os
+
 import pytest
-import uuid
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from app.main import app
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from app.core.security import hash_password
 from app.db.base import Base
-from app.db.session import get_db
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
-from app.core.security import hash_password
+from app.db.session import get_db
+from app.main import app
 
-TEST_DB_URL = "postgresql+asyncpg://agentic:agentic_secret@localhost:5432/agentic_test"
+TEST_DB_URL = os.getenv(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://agentic:agentic_secret@localhost:5432/agentic_test",
+)
 
 test_engine = create_async_engine(TEST_DB_URL, echo=False)
 TestSessionLocal = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
@@ -26,6 +32,7 @@ def event_loop():
 @pytest.fixture(scope="session", autouse=True)
 async def setup_db():
     async with test_engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
     yield
     async with test_engine.begin() as conn:

@@ -49,6 +49,22 @@ jobs:
     defaults:
       run:
         working-directory: api
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: agentic_test
+          POSTGRES_USER: agentic
+          POSTGRES_PASSWORD: agentic_secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
