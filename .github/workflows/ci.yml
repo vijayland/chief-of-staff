@@ -41,7 +41,7 @@ jobs:
         run: npx tsc --noEmit
 
 # ─────────────────────────────────────────────────────────────────────────────
-# JOB 2 — Backend tests  (no Docker, no AWS — fast feedback)
+# JOB 2 — Backend lint & tests  (no Docker, no AWS — fast feedback)
 # ─────────────────────────────────────────────────────────────────────────────
   test-api:
     name: "API — lint & unit tests"
@@ -83,11 +83,11 @@ jobs:
           MEMORY_EMBEDDING_DIM: "1536"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# JOB 3 — Docker build → test inside container → push to ECR
-#          Runs only on push to main (not PRs)
+# JOB 3 — Terraform (creates ECR + all AWS infrastructure)
+#          Must run BEFORE build-push so ECR exists
 # ─────────────────────────────────────────────────────────────────────────────
-  build-push:
-    name: "Docker — build → test → push ECR"
+  terraform:
+    name: "Terraform — provision infrastructure"
     needs: [test-web, test-api]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -97,7 +97,9 @@ jobs:
       contents: read
 
     outputs:
-      image_tag: ${{ steps.meta.outputs.image_tag }}
+      s3_bucket:     ${{ steps.outputs.outputs.s3_bucket }}
+      cf_id:         ${{ steps.outputs.outputs.cf_id }}
+      lambda_bucket: ${{ steps.outputs.outputs.lambda_bucket }}
 
     steps:
       - name: Checkout code
@@ -109,78 +111,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Resolve ECR image tags
-        id: meta
-        run: |
-          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-          REPO="${ACCOUNT}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.APP_NAME }}-api"
-          echo "image_tag=${REPO}:${{ github.sha }}"   >> $GITHUB_OUTPUT
-          echo "image_latest=${REPO}:latest"            >> $GITHUB_OUTPUT
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build image (load locally — do NOT push yet)
-        uses: docker/build-push-action@v5
-        with:
-          context: ./api
-          file: ./api/docker/Dockerfile
-          push: false
-          load: true
-          tags: |
-            ${{ steps.meta.outputs.image_tag }}
-            ${{ steps.meta.outputs.image_latest }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Run tests inside Docker image
-        run: |
-          docker run --rm \
-            -e APP_ENV=test \
-            -e SECRET_KEY=ci-test-secret-key-not-real \
-            -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-            -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-            -e ENCRYPTION_KEY="${{ secrets.ENCRYPTION_KEY }}" \
-            -e GOOGLE_CLIENT_ID=dummy \
-            -e GOOGLE_CLIENT_SECRET=dummy \
-            -e MEMORY_EMBEDDING_DIM=1536 \
-            ${{ steps.meta.outputs.image_tag }} \
-            pytest --no-cov -x -q
-
-      - name: Push image to ECR (tests passed)
-        run: |
-          docker push ${{ steps.meta.outputs.image_tag }}
-          docker push ${{ steps.meta.outputs.image_latest }}
-          echo "✅ Pushed ${{ steps.meta.outputs.image_tag }}"
-
-# ─────────────────────────────────────────────────────────────────────────────
-# JOB 4 — Deploy everything to AWS
-#          Runs only after build-push succeeds
-# ─────────────────────────────────────────────────────────────────────────────
-  deploy:
-    name: "Deploy to AWS"
-    needs: [build-push]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      # ── Terraform ────────────────────────────────────────────────────────────
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -207,25 +137,119 @@ jobs:
         working-directory: terraform
         run: terraform apply -auto-approve tfplan
 
-      - name: Get Terraform outputs
-        id: tf
+      - name: Read Terraform outputs
+        id: outputs
         working-directory: terraform
         run: |
-          echo "s3_bucket=$(terraform output -raw web_s3_bucket)"              >> $GITHUB_OUTPUT
-          echo "cf_id=$(terraform output -raw cloudfront_distribution_id)"     >> $GITHUB_OUTPUT
-          echo "lambda_bucket=$(terraform output -raw lambda_code_bucket)"     >> $GITHUB_OUTPUT
+          echo "s3_bucket=$(terraform output -raw web_s3_bucket)"                  >> $GITHUB_OUTPUT
+          echo "cf_id=$(terraform output -raw cloudfront_distribution_id)"         >> $GITHUB_OUTPUT
+          echo "lambda_bucket=$(terraform output -raw lambda_code_bucket)"         >> $GITHUB_OUTPUT
 
-      # ── ECS — force new deployment ───────────────────────────────────────────
-      - name: Deploy new image to ECS Fargate
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 4 — Docker build → test inside container → push to ECR
+#          ECR is guaranteed to exist because terraform job ran first
+# ─────────────────────────────────────────────────────────────────────────────
+  build-push:
+    name: "Docker — build → test → push ECR"
+    needs: [terraform]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Resolve ECR image tags
+        id: meta
+        run: |
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          REPO="${ACCOUNT}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.APP_NAME }}-api"
+          echo "image_tag=${REPO}:${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "image_latest=${REPO}:latest"          >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image locally (do NOT push yet)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api
+          file: ./api/docker/Dockerfile
+          push: false
+          load: true
+          tags: |
+            ${{ steps.meta.outputs.image_tag }}
+            ${{ steps.meta.outputs.image_latest }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run tests inside Docker image
+        run: |
+          docker run --rm \
+            -e APP_ENV=test \
+            -e SECRET_KEY=ci-test-secret-key-not-real \
+            -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+            -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+            -e ENCRYPTION_KEY="${{ secrets.ENCRYPTION_KEY }}" \
+            -e GOOGLE_CLIENT_ID=dummy \
+            -e GOOGLE_CLIENT_SECRET=dummy \
+            -e MEMORY_EMBEDDING_DIM=1536 \
+            ${{ steps.meta.outputs.image_tag }} \
+            pytest --no-cov -x -q
+
+      - name: Push verified image to ECR
+        run: |
+          docker push ${{ steps.meta.outputs.image_tag }}
+          docker push ${{ steps.meta.outputs.image_latest }}
+          echo "✅ Pushed ${{ steps.meta.outputs.image_tag }}"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 5 — Deploy: ECS + Frontend (S3/CloudFront) + Lambda
+# ─────────────────────────────────────────────────────────────────────────────
+  deploy:
+    name: "Deploy — ECS + S3 + Lambda"
+    needs: [build-push, terraform]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ── ECS — roll out new Docker image ──────────────────────────────────────
+      - name: Deploy to ECS Fargate
         run: |
           aws ecs update-service \
             --cluster ${{ env.APP_NAME }}-cluster \
             --service ${{ env.APP_NAME }}-api \
             --force-new-deployment \
             --region ${{ env.AWS_REGION }}
-          echo "✅ ECS deployment triggered"
+          echo "✅ ECS rolling deployment triggered"
 
-      # ── Frontend — build & upload ────────────────────────────────────────────
+      # ── Frontend — build Next.js static export ────────────────────────────────
       - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
@@ -241,95 +265,93 @@ jobs:
         working-directory: agent
         run: npm run build
 
-      - name: Upload frontend to S3
+      - name: Sync frontend to S3
         run: |
-          # JS/CSS — immutable cache (filenames are content-hashed by Next.js)
-          aws s3 sync agent/out s3://${{ steps.tf.outputs.s3_bucket }} \
-            --delete \
-            --exclude "*.html" \
+          S3=${{ needs.terraform.outputs.s3_bucket }}
+
+          # Upload everything first (no delete yet)
+          aws s3 sync agent/out s3://$S3 \
             --cache-control "public,max-age=31536000,immutable"
 
-          # HTML — always revalidate
-          aws s3 sync agent/out s3://${{ steps.tf.outputs.s3_bucket }} \
-            --delete \
-            --include "*.html" \
-            --cache-control "no-cache,no-store,must-revalidate"
+          # Override HTML files with no-cache headers
+          aws s3 sync agent/out s3://$S3 \
+            --exclude "*" --include "*.html" \
+            --cache-control "no-cache,no-store,must-revalidate" \
+            --metadata-directive REPLACE
 
-          echo "✅ Frontend uploaded to S3"
+          # Now delete files removed from build (single pass)
+          aws s3 sync agent/out s3://$S3 --delete --size-only
+
+          echo "✅ Frontend synced to S3"
 
       - name: Invalidate CloudFront cache
         run: |
-          INVALIDATION_ID=$(aws cloudfront create-invalidation \
-            --distribution-id ${{ steps.tf.outputs.cf_id }} \
+          ID=$(aws cloudfront create-invalidation \
+            --distribution-id ${{ needs.terraform.outputs.cf_id }} \
             --paths "/*" \
-            --query 'Invalidation.Id' \
-            --output text)
-          echo "✅ CloudFront invalidation started: $INVALIDATION_ID"
+            --query 'Invalidation.Id' --output text)
+          echo "✅ CloudFront invalidation: $ID"
 
-      # ── Lambda — package & deploy ────────────────────────────────────────────
-      - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      # ── Lambda — package & deploy ─────────────────────────────────────────────
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
       - name: Package Lambda functions
         run: |
+          pip install uv --quiet
+
+          # Install all api dependencies into /tmp/lambda-pkg
           cd api
-          uv pip install \
-            --system \
-            -r <(uv pip compile pyproject.toml --output-file -) \
+          pip install \
+            $(uv export --no-dev --format requirements-txt 2>/dev/null | grep -v "^-e") \
             --target /tmp/lambda-pkg \
             --quiet
 
-          cp -r app      /tmp/lambda-pkg/app
-          cp -r lambdas  /tmp/lambda-pkg/lambdas
+          # Copy application code
+          cp -r app     /tmp/lambda-pkg/app
+          cp -r lambdas /tmp/lambda-pkg/lambdas
 
+          # Create one zip per Lambda handler
           cd /tmp/lambda-pkg
-          zip -r /tmp/email_sync.zip           . -x "*.pyc" -x "__pycache__/*" > /dev/null
-          zip -r /tmp/calendar_sync.zip        . -x "*.pyc" -x "__pycache__/*" > /dev/null
-          zip -r /tmp/memory_consolidation.zip . -x "*.pyc" -x "__pycache__/*" > /dev/null
+          zip -r /tmp/email_sync.zip           . -x "*.pyc" "__pycache__/*" > /dev/null
+          zip -r /tmp/calendar_sync.zip        . -x "*.pyc" "__pycache__/*" > /dev/null
+          zip -r /tmp/memory_consolidation.zip . -x "*.pyc" "__pycache__/*" > /dev/null
           echo "✅ Lambda packages created"
 
       - name: Upload Lambda zips to S3
         run: |
-          aws s3 cp /tmp/email_sync.zip           s3://${{ steps.tf.outputs.lambda_bucket }}/email_sync.zip
-          aws s3 cp /tmp/calendar_sync.zip        s3://${{ steps.tf.outputs.lambda_bucket }}/calendar_sync.zip
-          aws s3 cp /tmp/memory_consolidation.zip s3://${{ steps.tf.outputs.lambda_bucket }}/memory_consolidation.zip
+          LB=${{ needs.terraform.outputs.lambda_bucket }}
+          aws s3 cp /tmp/email_sync.zip           s3://$LB/email_sync.zip
+          aws s3 cp /tmp/calendar_sync.zip        s3://$LB/calendar_sync.zip
+          aws s3 cp /tmp/memory_consolidation.zip s3://$LB/memory_consolidation.zip
           echo "✅ Lambda zips uploaded"
 
       - name: Update Lambda function code
         run: |
-          aws lambda update-function-code \
-            --function-name ${{ env.APP_NAME }}-email-sync \
-            --s3-bucket ${{ steps.tf.outputs.lambda_bucket }} \
-            --s3-key email_sync.zip \
-            --no-cli-pager
+          LB=${{ needs.terraform.outputs.lambda_bucket }}
 
-          aws lambda update-function-code \
-            --function-name ${{ env.APP_NAME }}-calendar-sync \
-            --s3-bucket ${{ steps.tf.outputs.lambda_bucket }} \
-            --s3-key calendar_sync.zip \
-            --no-cli-pager
+          for fn in email-sync calendar-sync memory-consolidation; do
+            key="${fn//-/_}.zip"
+            aws lambda update-function-code \
+              --function-name ${{ env.APP_NAME }}-${fn} \
+              --s3-bucket $LB \
+              --s3-key ${key} \
+              --no-cli-pager
+            echo "✅ Updated Lambda: ${{ env.APP_NAME }}-${fn}"
+          done
 
-          aws lambda update-function-code \
-            --function-name ${{ env.APP_NAME }}-memory-consolidation \
-            --s3-bucket ${{ steps.tf.outputs.lambda_bucket }} \
-            --s3-key memory_consolidation.zip \
-            --no-cli-pager
-
-          echo "✅ All Lambda functions updated"
-
-      # ── Job summary ──────────────────────────────────────────────────────────
+      # ── Deployment summary ────────────────────────────────────────────────────
       - name: Write deployment summary
         run: |
-          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## ✅ Deployment Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Service | Status | Detail |" >> $GITHUB_STEP_SUMMARY
-          echo "|---------|--------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Docker image | ✅ Pushed | \`${{ github.sha }}\` → ECR |" >> $GITHUB_STEP_SUMMARY
-          echo "| ECS Fargate  | ✅ Deployed | Force new deployment triggered |" >> $GITHUB_STEP_SUMMARY
-          echo "| Frontend     | ✅ Live | S3 synced + CloudFront invalidated |" >> $GITHUB_STEP_SUMMARY
-          echo "| Lambda (3x)  | ✅ Updated | email / calendar / memory |" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | Detail |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| ECS Fargate  | Rolling deploy triggered |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker image | \`${{ github.sha }}\` pushed to ECR |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend     | S3 synced + CloudFront invalidated |" >> $GITHUB_STEP_SUMMARY
+          echo "| Lambda (3x)  | email / calendar / memory updated |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\` by @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
