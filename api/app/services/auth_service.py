@@ -11,6 +11,7 @@ from app.core.security import (
     decrypt_value,
     encrypt_value,
 )
+from app.dependencies import invalidate_user_cache
 from app.db.models.oauth_token import OAuthToken
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
@@ -104,6 +105,7 @@ async def handle_google_login(db: AsyncSession, code: str, state: str) -> dict:
 
     user.google_connected = True
     await db.flush()
+    invalidate_user_cache(str(user.id))
 
     return issue_tokens(user)
 
