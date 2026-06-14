@@ -17,6 +17,17 @@ data "aws_iam_openid_connect_provider" "github" {
   url = "https://token.actions.githubusercontent.com"
 }
 
+# Import the existing role into state instead of trying to create it
+import {
+  to = aws_iam_role.github_deploy
+  id = "chief-of-staff-github-deploy"
+}
+
+import {
+  to = aws_iam_role_policy.github_deploy
+  id = "chief-of-staff-github-deploy:chief-of-staff-github-deploy-policy"
+}
+
 resource "aws_iam_role" "github_deploy" {
   name = "${var.app_name}-github-deploy"
 
