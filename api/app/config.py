@@ -36,10 +36,10 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://redis:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://redis:6379/2"
 
-    # ── Neo4j ─────────────────────────────────────────────────────────────────
-    NEO4J_URI: str = "bolt://neo4j:7687"
+    # ── Neo4j (optional — graph memory) ──────────────────────────────────────
+    NEO4J_URI: str = ""       # empty = Neo4j disabled, app still works
     NEO4J_USER: str = "neo4j"
-    NEO4J_PASSWORD: str = "neo4j_secret"
+    NEO4J_PASSWORD: str = ""
 
     # ── OpenAI (chat + embeddings) ────────────────────────────────────────────
     OPENAI_API_KEY: str
