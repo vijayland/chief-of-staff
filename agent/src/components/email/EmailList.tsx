@@ -10,7 +10,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { api } from "@/lib/api";
@@ -31,7 +31,7 @@ function linkifyText(text: string) {
     if (url) {
       return (
         <a
-          key={i}
+          key={`link-${i}`}
           href={url}
           target="_blank"
           rel="noreferrer"
@@ -41,7 +41,7 @@ function linkifyText(text: string) {
         </a>
       );
     }
-    return <span key={i}>{part}</span>;
+    return <span key={`text-${i}`}>{part}</span>;
   });
 }
 
@@ -112,28 +112,30 @@ export function EmailList() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  // Stack of page tokens: index 0 = page 1 token (undefined = first page)
   const [tokenStack, setTokenStack] = useState<(string | null)[]>([null]);
   const [nextToken, setNextToken] = useState<string | null>(null);
 
-  async function load(q: string, pageToken: string | null, isAppend = false) {
-    if (isAppend) setLoadingMore(true);
-    else setLoading(true);
-    try {
-      const data = await api.email.list(q, PAGE_SIZE, pageToken ?? undefined);
-      if (isAppend) {
-        setEmails((prev) => [...prev, ...data.emails]);
-      } else {
-        setEmails(data.emails);
+  const load = useCallback(
+    async (q: string, pageToken: string | null, isAppend = false) => {
+      if (isAppend) setLoadingMore(true);
+      else setLoading(true);
+      try {
+        const data = await api.email.list(q, PAGE_SIZE, pageToken ?? undefined);
+        if (isAppend) {
+          setEmails((prev) => [...prev, ...data.emails]);
+        } else {
+          setEmails(data.emails);
+        }
+        setNextToken(data.next_page_token);
+      } catch {
+        if (!isAppend) setEmails([]);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
       }
-      setNextToken(data.next_page_token);
-    } catch {
-      if (!isAppend) setEmails([]);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }
+    },
+    [],
+  );
 
   useEffect(() => {
     load("", null);
@@ -196,7 +198,9 @@ export function EmailList() {
         {/* Email rows */}
         <div className="flex-1 overflow-y-auto bg-white">
           {loading ? (
-            Array.from({ length: 8 }).map((_, i) => <EmailSkeleton key={i} />)
+            Array.from({ length: 8 }, (_, i) => (
+              <EmailSkeleton key={`esk-${i}`} />
+            ))
           ) : emails.length === 0 ? (
             <div className="flex flex-col items-center justify-center pt-16 gap-2">
               <Inbox className="w-8 h-8 text-border-strong" />
@@ -260,6 +264,7 @@ export function EmailList() {
                 {selected.subject}
               </h2>
               <button
+                type="button"
                 onClick={() => setSelected(null)}
                 className="shrink-0 p-1.5 rounded-md hover:bg-surface-hover text-text-muted hover:text-text-primary transition-colors"
               >

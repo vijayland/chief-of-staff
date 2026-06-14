@@ -1,7 +1,7 @@
 "use client";
 
 import { Brain, Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { MemoryCard } from "@/components/memory/MemoryCard";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -36,7 +36,7 @@ export default function MemoryPage() {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
 
-  async function loadMemories(f: FilterType) {
+  const loadMemories = useCallback(async (f: FilterType) => {
     setLoading(true);
     setSearchResults(null);
     try {
@@ -47,7 +47,7 @@ export default function MemoryPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     loadMemories(filter);
@@ -165,8 +165,8 @@ export default function MemoryPage() {
       <div className="flex-1 overflow-y-auto px-6 py-5">
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <MemorySkeleton key={i} />
+            {Array.from({ length: 6 }, (_, i) => (
+              <MemorySkeleton key={`msk-${i}`} />
             ))}
           </div>
         ) : displayItems.length === 0 ? (

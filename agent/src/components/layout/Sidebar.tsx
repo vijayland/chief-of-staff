@@ -36,7 +36,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onClose }: SidebarProps) {
-  const { activeConvId, setActiveConvId, refreshTrigger } = useChatContext();
+  const { activeConvId, setActiveConvId } = useChatContext();
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -193,8 +193,11 @@ export function Sidebar({ onClose }: SidebarProps) {
           <div className="flex-1 overflow-y-auto -mx-1">
             {loadingConvs ? (
               <div className="px-2 space-y-1 pt-1">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-2 px-2 py-2">
+                {Array.from({ length: 4 }, (_, i) => (
+                  <div
+                    key={`sk-${i}`}
+                    className="flex items-center gap-2 px-2 py-2"
+                  >
                     <Skeleton className="w-3.5 h-3.5 rounded shrink-0" />
                     <Skeleton
                       className={`h-3 ${i % 2 === 0 ? "w-24" : "w-20"}`}
@@ -214,27 +217,20 @@ export function Sidebar({ onClose }: SidebarProps) {
                     (activeConvId === NEW_ID && conv.id === NEW_ID);
                   const isPending = conv.id === NEW_ID;
                   return (
-                    <div
+                    <button
                       key={conv.id}
-                      role="button"
-                      tabIndex={0}
+                      type="button"
+                      disabled={isPending}
                       onClick={() => {
-                        if (!isPending) {
-                          setActiveConvId(conv.id);
-                          onClose?.();
-                        }
+                        setActiveConvId(conv.id);
+                        onClose?.();
                       }}
-                      onKeyDown={(e) =>
-                        e.key === "Enter" &&
-                        !isPending &&
-                        setActiveConvId(conv.id)
-                      }
-                      className={`group flex items-center gap-2 px-2.5 py-2 mx-1 rounded-md cursor-pointer transition-all
+                      className={`group flex items-center gap-2 px-2.5 py-2 mx-1 rounded-md w-full text-left transition-all
                         ${
                           isActive
                             ? "bg-white text-text-primary shadow-sm border border-border"
                             : "hover:bg-surface-hover text-text-secondary hover:text-text-primary"
-                        }`}
+                        } ${isPending ? "cursor-default opacity-60" : "cursor-pointer"}`}
                     >
                       <MessageSquare
                         className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-text-primary" : "text-text-muted"}`}
@@ -257,7 +253,7 @@ export function Sidebar({ onClose }: SidebarProps) {
                           <Trash2 className="w-3 h-3" />
                         )}
                       </button>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -293,6 +289,7 @@ export function Sidebar({ onClose }: SidebarProps) {
           </div>
         ) : null}
         <button
+          type="button"
           onClick={logout}
           className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[12px] font-medium
             text-text-secondary hover:bg-surface-hover hover:text-danger transition-colors w-full mt-1"

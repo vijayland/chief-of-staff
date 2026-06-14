@@ -54,6 +54,7 @@ export function MemoryCard({ memory, similarity, onDelete }: MemoryCardProps) {
           )}
         </div>
         <button
+          type="button"
           onClick={() => onDelete(memory.id)}
           className="opacity-0 group-hover:opacity-100 p-1 rounded
             hover:bg-[#fef2f2] text-[#9ca3af] hover:text-[#dc2626] transition-all"

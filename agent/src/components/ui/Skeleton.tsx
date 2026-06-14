@@ -15,9 +15,9 @@ export function SkeletonText({
 }) {
   return (
     <div className={`space-y-2 ${className}`}>
-      {Array.from({ length: lines }).map((_, i) => (
+      {Array.from({ length: lines }, (_, i) => (
         <Skeleton
-          key={i}
+          key={`sk-${i}`}
           className={`h-3 ${i === lines - 1 && lines > 1 ? "w-3/4" : "w-full"}`}
         />
       ))}

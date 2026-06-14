@@ -28,6 +28,7 @@ export function EmailRow({ email, onClick, selected }: EmailRowProps) {
 
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`
         w-full text-left px-4 py-3.5 border-b border-surface-hover transition-colors relative

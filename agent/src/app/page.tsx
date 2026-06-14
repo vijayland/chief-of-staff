@@ -47,6 +47,7 @@ export default function LoginPage() {
 
           {/* Google Button */}
           <button
+            type="button"
             onClick={signInWithGoogle}
             disabled={loading}
             className="w-full flex items-center justify-center gap-3 h-10 px-4

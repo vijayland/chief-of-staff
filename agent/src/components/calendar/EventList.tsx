@@ -8,7 +8,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { api } from "@/lib/api";
 import type { CalendarEvent } from "@/types";
@@ -58,7 +58,7 @@ export function EventList() {
   const [loading, setLoading] = useState(true);
   const [daysAhead, setDaysAhead] = useState(7);
 
-  async function load(days: number) {
+  const load = useCallback(async (days: number) => {
     setLoading(true);
     try {
       const data = await api.calendar.events(days);
@@ -68,7 +68,7 @@ export function EventList() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     load(daysAhead);
@@ -89,6 +89,7 @@ export function EventList() {
         {[7, 14, 30].map((d) => (
           <button
             key={d}
+            type="button"
             onClick={() => setDaysAhead(d)}
             className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all
               ${
@@ -110,8 +111,8 @@ export function EventList() {
               <div key={g}>
                 <Skeleton className="h-3 w-32 mb-3" />
                 <div className="space-y-2">
-                  {Array.from({ length: g === 1 ? 2 : 1 }).map((_, i) => (
-                    <EventSkeleton key={i} />
+                  {Array.from({ length: g === 1 ? 2 : 1 }, (_, i) => (
+                    <EventSkeleton key={`esk-${g}-${i}`} />
                   ))}
                 </div>
               </div>
@@ -160,6 +161,7 @@ export function EventList() {
                               </a>
                             )}
                             <button
+                              type="button"
                               onClick={() => deleteEvent(event.id)}
                               className="p-1.5 rounded hover:bg-danger-light text-text-muted hover:text-danger transition-colors"
                             >
