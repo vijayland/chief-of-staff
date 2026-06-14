@@ -1,8 +1,19 @@
-import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from "./auth";
 import type {
-  TokenResponse, User, ChatResponse, Conversation,
-  Email, CalendarEvent, MemoryNode, MemorySearchResult,
+  CalendarEvent,
+  ChatResponse,
+  Conversation,
+  Email,
+  MemoryNode,
+  MemorySearchResult,
+  TokenResponse,
+  User,
 } from "@/types";
+import {
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  saveTokens,
+} from "./auth";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -24,7 +35,11 @@ async function refreshAccessToken(): Promise<boolean> {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
+async function request<T>(
+  path: string,
+  init: RequestInit = {},
+  retry = true,
+): Promise<T> {
   const token = getAccessToken();
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -59,7 +74,12 @@ export const api = {
         body: JSON.stringify({ email, password }),
       }),
 
-    register: (email: string, full_name: string, password: string, tenant_slug: string) =>
+    register: (
+      email: string,
+      full_name: string,
+      password: string,
+      tenant_slug: string,
+    ) =>
       request<TokenResponse>("/api/v1/auth/register", {
         method: "POST",
         body: JSON.stringify({ email, full_name, password, tenant_slug }),
@@ -91,9 +111,14 @@ export const api = {
   // ── Email ─────────────────────────────────────────────────────────────────
   email: {
     list: (query = "", max_results = 20, page_token?: string) => {
-      const params = new URLSearchParams({ query, max_results: String(max_results) });
+      const params = new URLSearchParams({
+        query,
+        max_results: String(max_results),
+      });
       if (page_token) params.set("page_token", page_token);
-      return request<{ emails: Email[]; next_page_token: string | null }>(`/api/v1/email?${params}`);
+      return request<{ emails: Email[]; next_page_token: string | null }>(
+        `/api/v1/email?${params}`,
+      );
     },
 
     get: (id: string) => request<Email>(`/api/v1/email/${id}`),
@@ -117,9 +142,17 @@ export const api = {
   // ── Calendar ──────────────────────────────────────────────────────────────
   calendar: {
     events: (days_ahead = 7) =>
-      request<CalendarEvent[]>(`/api/v1/calendar/events?days_ahead=${days_ahead}`),
+      request<CalendarEvent[]>(
+        `/api/v1/calendar/events?days_ahead=${days_ahead}`,
+      ),
 
-    create: (title: string, start: string, end: string, description = "", attendees: string[] = []) =>
+    create: (
+      title: string,
+      start: string,
+      end: string,
+      description = "",
+      attendees: string[] = [],
+    ) =>
       request<CalendarEvent>("/api/v1/calendar/events", {
         method: "POST",
         body: JSON.stringify({ title, start, end, description, attendees }),
@@ -132,7 +165,9 @@ export const api = {
   // ── Memory ────────────────────────────────────────────────────────────────
   memory: {
     list: (memory_type?: string) =>
-      request<MemoryNode[]>(`/api/v1/memory${memory_type ? `?memory_type=${memory_type}` : ""}`),
+      request<MemoryNode[]>(
+        `/api/v1/memory${memory_type ? `?memory_type=${memory_type}` : ""}`,
+      ),
 
     search: (query: string, top_k = 10) =>
       request<MemorySearchResult[]>("/api/v1/memory/search", {

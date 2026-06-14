@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useCallback, useContext, useState } from "react";
 
 interface ChatContextValue {
   activeConvId: string | undefined;
@@ -18,7 +18,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const triggerRefresh = useCallback(() => setRefreshTrigger((n) => n + 1), []);
 
   return (
-    <ChatContext.Provider value={{ activeConvId, setActiveConvId, triggerRefresh, refreshTrigger }}>
+    <ChatContext.Provider
+      value={{ activeConvId, setActiveConvId, triggerRefresh, refreshTrigger }}
+    >
       {children}
     </ChatContext.Provider>
   );

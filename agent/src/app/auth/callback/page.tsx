@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { saveTokens } from "@/lib/auth";
 import { Bot } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { saveTokens } from "@/lib/auth";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -31,6 +31,7 @@ export default function AuthCallbackPage() {
             {error}
           </p>
           <button
+            type="button"
             onClick={() => router.push("/")}
             className="mt-4 text-xs text-text-secondary hover:text-text-primary"
           >

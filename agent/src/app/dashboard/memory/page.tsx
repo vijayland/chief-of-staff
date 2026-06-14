@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Brain, Search } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Header } from "@/components/layout/Header";
 import { MemoryCard } from "@/components/memory/MemoryCard";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Header } from "@/components/layout/Header";
 import { api } from "@/lib/api";
 import type { MemoryNode, MemorySearchResult } from "@/types";
-import { Search, Brain } from "lucide-react";
 
 type FilterType = "all" | "semantic" | "procedural" | "episodic";
 
@@ -28,7 +28,9 @@ function MemorySkeleton() {
 
 export default function MemoryPage() {
   const [memories, setMemories] = useState<MemoryNode[]>([]);
-  const [searchResults, setSearchResults] = useState<MemorySearchResult[] | null>(null);
+  const [searchResults, setSearchResults] = useState<
+    MemorySearchResult[] | null
+  >(null);
   const [filter, setFilter] = useState<FilterType>("all");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -47,10 +49,15 @@ export default function MemoryPage() {
     }
   }
 
-  useEffect(() => { loadMemories(filter); }, [filter]);
+  useEffect(() => {
+    loadMemories(filter);
+  }, [filter]);
 
   async function handleSearch() {
-    if (!query.trim()) { setSearchResults(null); return; }
+    if (!query.trim()) {
+      setSearchResults(null);
+      return;
+    }
     setSearching(true);
     try {
       const results = await api.memory.search(query, 20);
@@ -72,9 +79,13 @@ export default function MemoryPage() {
       await api.memory.delete(id);
       setMemories((prev) => prev.filter((m) => m.id !== id));
       if (searchResults) {
-        setSearchResults((prev) => prev?.filter((r) => r.memory.id !== id) ?? null);
+        setSearchResults(
+          (prev) => prev?.filter((r) => r.memory.id !== id) ?? null,
+        );
       }
-    } catch { /* noop */ }
+    } catch {
+      /* noop */
+    }
   }
 
   const displayItems = searchResults
@@ -113,8 +124,11 @@ export default function MemoryPage() {
             {searching ? "…" : "Search"}
           </button>
           {searchResults !== null && (
-            <button type="button" onClick={clearSearch}
-              className="text-xs text-text-secondary hover:text-text-primary transition-colors font-medium">
+            <button
+              type="button"
+              onClick={clearSearch}
+              className="text-xs text-text-secondary hover:text-text-primary transition-colors font-medium"
+            >
               Clear
             </button>
           )}
@@ -124,12 +138,14 @@ export default function MemoryPage() {
           <div className="flex items-center gap-1 ml-auto">
             {FILTERS.map((f) => (
               <button
-                type="button" key={f}
+                type="button"
+                key={f}
                 onClick={() => setFilter(f)}
                 className={`px-3 py-1.5 text-xs font-medium rounded-full capitalize transition-all
-                  ${filter === f
-                    ? "bg-text-primary text-white shadow-sm"
-                    : "text-text-secondary hover:bg-surface-hover"
+                  ${
+                    filter === f
+                      ? "bg-text-primary text-white shadow-sm"
+                      : "text-text-secondary hover:bg-surface-hover"
                   }`}
               >
                 {f}
@@ -149,7 +165,9 @@ export default function MemoryPage() {
       <div className="flex-1 overflow-y-auto px-6 py-5">
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {Array.from({ length: 6 }).map((_, i) => <MemorySkeleton key={i} />)}
+            {Array.from({ length: 6 }).map((_, i) => (
+              <MemorySkeleton key={i} />
+            ))}
           </div>
         ) : displayItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center pt-24 gap-3">
@@ -168,7 +186,12 @@ export default function MemoryPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {displayItems.map(({ node, similarity }) => (
-              <MemoryCard key={node.id} memory={node} similarity={similarity} onDelete={handleDelete} />
+              <MemoryCard
+                key={node.id}
+                memory={node}
+                similarity={similarity}
+                onDelete={handleDelete}
+              />
             ))}
           </div>
         )}

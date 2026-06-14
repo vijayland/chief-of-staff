@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Bot } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { isAuthenticated } from "@/lib/auth";
 
@@ -10,8 +10,6 @@ export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
- 
 
   async function signInWithGoogle() {
     setLoading(true);
@@ -28,20 +26,24 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface-sidebar">
       <div className="w-full max-w-sm">
-
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-12 h-12 rounded-xl bg-text-primary flex items-center justify-center mb-4">
             <Bot className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-xl font-semibold text-text-primary">Chief of Staff</h1>
-          <p className="text-sm text-text-muted mt-1">Your AI workplace assistant</p>
+          <h1 className="text-xl font-semibold text-text-primary">
+            Chief of Staff
+          </h1>
+          <p className="text-sm text-text-muted mt-1">
+            Your AI workplace assistant
+          </p>
         </div>
 
         {/* Card */}
         <div className="bg-white rounded-xl border border-border shadow-sm p-8">
           <p className="text-sm text-text-secondary text-center mb-6">
-            Sign in to manage your email, calendar, and tasks with AI assistance.
+            Sign in to manage your email, calendar, and tasks with AI
+            assistance.
           </p>
 
           {/* Google Button */}
@@ -54,9 +56,24 @@ export default function LoginPage() {
               disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
-              <svg className="animate-spin w-4 h-4 text-text-muted" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              <svg
+                className="animate-spin w-4 h-4 text-text-muted"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
               </svg>
             ) : (
               <GoogleIcon />

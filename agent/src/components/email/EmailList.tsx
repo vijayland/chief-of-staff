@@ -1,12 +1,21 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { EmailRow } from "./EmailRow";
-import { Skeleton } from "@/components/ui/Skeleton";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Inbox,
+  Loader2,
+  Reply,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { api } from "@/lib/api";
 import type { Email } from "@/types";
-import { X, Reply, Trash2, Search, Inbox, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { EmailRow } from "./EmailRow";
 
 const PAGE_SIZE = 20;
 
@@ -14,9 +23,23 @@ function linkifyText(text: string) {
   const parts = text.split(/(<https?:\/\/[^>]+>|https?:\/\/\S+)/g);
   return parts.map((part, i) => {
     const angleMatch = part.match(/^<(https?:\/\/.+)>$/);
-    const url = angleMatch ? angleMatch[1] : (part.match(/^https?:\/\//) ? part : null);
+    const url = angleMatch
+      ? angleMatch[1]
+      : part.match(/^https?:\/\//)
+        ? part
+        : null;
     if (url) {
-      return <a key={i} href={url} target="_blank" rel="noreferrer" className="text-accent underline break-all">{url}</a>;
+      return (
+        <a
+          key={i}
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="text-accent underline break-all"
+        >
+          {url}
+        </a>
+      );
     }
     return <span key={i}>{part}</span>;
   });
@@ -40,7 +63,8 @@ function HtmlEmailFrame({ html }: { html: string }) {
     doc.close();
     const resize = () => {
       if (iframe.contentDocument?.body) {
-        iframe.style.height = iframe.contentDocument.body.scrollHeight + 32 + "px";
+        iframe.style.height =
+          iframe.contentDocument.body.scrollHeight + 32 + "px";
       }
     };
     iframe.onload = resize;
@@ -112,7 +136,9 @@ export function EmailList() {
     }
   }
 
-  useEffect(() => { load("", null); }, []);
+  useEffect(() => {
+    load("", null);
+  }, []);
 
   function handleSearch() {
     setPage(1);
@@ -172,7 +198,9 @@ export function EmailList() {
         <div className="flex-1 overflow-y-auto bg-white">
           {loading ? (
             <>
-              {Array.from({ length: 8 }).map((_, i) => <EmailSkeleton key={i} />)}
+              {Array.from({ length: 8 }).map((_, i) => (
+                <EmailSkeleton key={i} />
+              ))}
             </>
           ) : emails.length === 0 ? (
             <div className="flex flex-col items-center justify-center pt-16 gap-2">
@@ -216,7 +244,13 @@ export function EmailList() {
               className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded-md
                 text-text-secondary hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
-              {loadingMore ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <>Next <ChevronRight className="w-3.5 h-3.5" /></>}
+              {loadingMore ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <>
+                  Next <ChevronRight className="w-3.5 h-3.5" />
+                </>
+              )}
             </button>
           </div>
         )}
@@ -244,7 +278,9 @@ export function EmailList() {
               <span className="text-text-muted font-medium">To</span>
               <span className="text-text-secondary">{selected.to}</span>
               <span className="text-text-muted font-medium">Date</span>
-              <span className="text-text-secondary">{new Date(selected.date).toLocaleString()}</span>
+              <span className="text-text-secondary">
+                {new Date(selected.date).toLocaleString()}
+              </span>
             </div>
 
             <EmailBody email={selected} />
@@ -253,7 +289,11 @@ export function EmailList() {
               <Button size="sm" variant="secondary">
                 <Reply className="w-3.5 h-3.5" /> Reply
               </Button>
-              <Button size="sm" variant="danger" onClick={() => trash(selected.id)}>
+              <Button
+                size="sm"
+                variant="danger"
+                onClick={() => trash(selected.id)}
+              >
                 <Trash2 className="w-3.5 h-3.5" /> Trash
               </Button>
             </div>
@@ -263,8 +303,12 @@ export function EmailList() {
             <div className="w-10 h-10 rounded-xl bg-surface-sidebar flex items-center justify-center">
               <Inbox className="w-5 h-5 text-text-muted" />
             </div>
-            <p className="text-sm font-medium text-text-primary">Select an email</p>
-            <p className="text-xs text-text-muted">Click any email on the left to read it</p>
+            <p className="text-sm font-medium text-text-primary">
+              Select an email
+            </p>
+            <p className="text-xs text-text-muted">
+              Click any email on the left to read it
+            </p>
           </div>
         )}
       </div>

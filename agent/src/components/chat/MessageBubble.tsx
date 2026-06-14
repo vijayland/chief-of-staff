@@ -1,7 +1,7 @@
+import { AlertCircle, Bot } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Avatar } from "@/components/ui/Avatar";
-import { Bot, AlertCircle } from "lucide-react";
 import type { Message } from "@/types";
 
 interface MessageBubbleProps {
@@ -9,15 +9,20 @@ interface MessageBubbleProps {
   userName?: string;
 }
 
-export function MessageBubble({ message, userName = "You" }: MessageBubbleProps) {
+export function MessageBubble({
+  message,
+  userName = "You",
+}: MessageBubbleProps) {
   const isUser = message.role === "user";
   const isError = message.role === "error";
 
   if (isError) {
     return (
       <div className="flex justify-center">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm
-          bg-red-50 border border-red-200 text-red-600 max-w-[80%]">
+        <div
+          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm
+          bg-red-50 border border-red-200 text-red-600 max-w-[80%]"
+        >
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{message.content}</span>
         </div>
@@ -37,20 +42,25 @@ export function MessageBubble({ message, userName = "You" }: MessageBubbleProps)
         )}
       </div>
 
-      <div className={`flex flex-col gap-0.5 max-w-[85%] ${isUser ? "items-end" : "items-start"}`}>
+      <div
+        className={`flex flex-col gap-0.5 max-w-[85%] ${isUser ? "items-end" : "items-start"}`}
+      >
         <span className="text-[11px] text-text-muted px-1">
           {isUser ? userName : "Assistant"}
         </span>
         <div
           className={`
             px-3 py-2 rounded-lg text-sm leading-relaxed
-            ${isUser
-              ? "bg-text-primary text-white rounded-tr-sm whitespace-pre-wrap"
-              : "bg-surface-sidebar text-text-primary border border-border rounded-tl-sm prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0"
+            ${
+              isUser
+                ? "bg-text-primary text-white rounded-tr-sm whitespace-pre-wrap"
+                : "bg-surface-sidebar text-text-primary border border-border rounded-tl-sm prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0"
             }
           `}
         >
-          {isUser ? message.content : (
+          {isUser ? (
+            message.content
+          ) : (
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {message.content}
             </ReactMarkdown>
@@ -71,9 +81,11 @@ export function StreamingBubble({ content }: { content: string }) {
       </div>
       <div className="flex flex-col gap-0.5 max-w-[85%] items-start">
         <span className="text-[11px] text-text-muted px-1">Assistant</span>
-        <div className="px-3 py-2 rounded-lg rounded-tl-sm text-sm leading-relaxed
+        <div
+          className="px-3 py-2 rounded-lg rounded-tl-sm text-sm leading-relaxed
           bg-surface-sidebar text-text-primary border border-border
-          prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0">
+          prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0"
+        >
           {content ? (
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
           ) : (

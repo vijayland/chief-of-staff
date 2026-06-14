@@ -87,7 +87,7 @@ body {
   font-size: inherit;
   line-height: inherit;
 }
-.prose :where(h1,h2,h3,h4) {
+.prose :where(h1, h2, h3, h4) {
   font-size: 0.9em;
   font-weight: 600;
   margin-top: 0.75em;
@@ -98,7 +98,7 @@ body {
   margin-top: 0.25em;
   margin-bottom: 0.25em;
 }
-.prose :where(ul,ol) {
+.prose :where(ul, ol) {
   padding-left: 1.25em;
   margin-top: 0.25em;
   margin-bottom: 0.25em;
@@ -142,8 +142,12 @@ body {
 
 /* Skeleton shimmer */
 @keyframes shimmer {
-  0% { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
 }
 .skeleton {
   background: linear-gradient(90deg, #f0f0ef 25%, #e8e8e6 50%, #f0f0ef 75%);

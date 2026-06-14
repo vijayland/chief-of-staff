@@ -1,11 +1,12 @@
-import { getAccessToken } from "./auth";
 import type { WSMessage } from "@/types";
+import { getAccessToken } from "./auth";
 
 function getWsBase(): string {
   if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL
-      .replace("http://", "ws://")
-      .replace("https://", "wss://");
+    return process.env.NEXT_PUBLIC_API_URL.replace("http://", "ws://").replace(
+      "https://",
+      "wss://",
+    );
   }
   // No env var: derive from current page origin (works behind CloudFront)
   if (typeof window !== "undefined") {
@@ -54,7 +55,8 @@ export class ChatSocket {
       try {
         const data: WSMessage = JSON.parse(event.data);
         if (data.type === "token") this.callbacks.onToken(data.content);
-        else if (data.type === "done") this.callbacks.onDone(data.conversation_id);
+        else if (data.type === "done")
+          this.callbacks.onDone(data.conversation_id);
         else if (data.type === "error") this.callbacks.onError(data.content);
       } catch {
         // malformed message — ignore
@@ -83,7 +85,9 @@ export class ChatSocket {
 
   send(message: string, conversationId?: string) {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ message, conversation_id: conversationId }));
+      this.ws.send(
+        JSON.stringify({ message, conversation_id: conversationId }),
+      );
       return true;
     }
     return false;

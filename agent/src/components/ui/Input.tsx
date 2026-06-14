@@ -1,6 +1,6 @@
 "use client";
 
-import { type InputHTMLAttributes, forwardRef } from "react";
+import { forwardRef, type InputHTMLAttributes } from "react";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -8,16 +8,22 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, className = "", ...props }, ref) => {
+  ({ label, error, className = "", id, ...props }, ref) => {
+    const inputId =
+      id ?? (label ? label.toLowerCase().replace(/\s+/g, "-") : undefined);
     return (
       <div className="flex flex-col gap-1">
         {label && (
-          <label className="text-xs font-medium text-text-secondary uppercase tracking-wide">
+          <label
+            htmlFor={inputId}
+            className="text-xs font-medium text-text-secondary uppercase tracking-wide"
+          >
             {label}
           </label>
         )}
         <input
           ref={ref}
+          id={inputId}
           className={`
             h-8 w-full rounded-md border border-border bg-white
             px-3 text-sm text-text-primary placeholder:text-text-muted

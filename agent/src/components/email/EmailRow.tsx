@@ -12,7 +12,8 @@ function formatDate(dateStr: string) {
   const d = new Date(dateStr);
   const now = new Date();
   const diff = now.getTime() - d.getTime();
-  if (diff < 86400000) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (diff < 86400000)
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   if (diff < 604800000) return d.toLocaleDateString([], { weekday: "short" });
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
@@ -39,12 +40,18 @@ export function EmailRow({ email, onClick, selected }: EmailRowProps) {
       )}
 
       <div className="flex items-baseline justify-between gap-2 mb-1">
-        <span className={`text-[13px] truncate ${isUnread ? "font-bold text-text-primary" : "font-medium text-text-secondary"}`}>
+        <span
+          className={`text-[13px] truncate ${isUnread ? "font-bold text-text-primary" : "font-medium text-text-secondary"}`}
+        >
           {fromName(email.from)}
         </span>
-        <span className="text-[10px] text-text-muted shrink-0 font-medium">{formatDate(email.date)}</span>
+        <span className="text-[10px] text-text-muted shrink-0 font-medium">
+          {formatDate(email.date)}
+        </span>
       </div>
-      <p className={`text-xs truncate mb-0.5 ${isUnread ? "font-semibold text-text-primary" : "text-text-secondary"}`}>
+      <p
+        className={`text-xs truncate mb-0.5 ${isUnread ? "font-semibold text-text-primary" : "text-text-secondary"}`}
+      >
         {email.subject}
       </p>
       <p className="text-[11px] text-text-muted truncate">{email.snippet}</p>

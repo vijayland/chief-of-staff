@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { MessageBubble, StreamingBubble } from "./MessageBubble";
-import { ChatInput } from "./ChatInput";
+import { useEffect, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/Spinner";
-import { ChatSocket } from "@/lib/ws";
 import { api } from "@/lib/api";
+import { ChatSocket } from "@/lib/ws";
 import type { Message } from "@/types";
+import { ChatInput } from "./ChatInput";
+import { MessageBubble, StreamingBubble } from "./MessageBubble";
 
 interface ChatWindowProps {
   conversationId?: string;
@@ -14,7 +14,11 @@ interface ChatWindowProps {
   onConversationCreated?: (id: string) => void;
 }
 
-export function ChatWindow({ conversationId, userName, onConversationCreated }: ChatWindowProps) {
+export function ChatWindow({
+  conversationId,
+  userName,
+  onConversationCreated,
+}: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [streaming, setStreaming] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -32,8 +36,12 @@ export function ChatWindow({ conversationId, userName, onConversationCreated }: 
   const conversationIdRef = useRef(conversationId);
   const streamingRef = useRef("");
 
-  useEffect(() => { onConversationCreatedRef.current = onConversationCreated; });
-  useEffect(() => { conversationIdRef.current = conversationId; }, [conversationId]);
+  useEffect(() => {
+    onConversationCreatedRef.current = onConversationCreated;
+  });
+  useEffect(() => {
+    conversationIdRef.current = conversationId;
+  }, [conversationId]);
 
   // Load history when the selected conversation changes
   useEffect(() => {
@@ -50,9 +58,16 @@ export function ChatWindow({ conversationId, userName, onConversationCreated }: 
     // Clear immediately so old messages don't flash while loading
     setMessages([]);
     setIsHistoryLoading(true);
-    api.chat.conversation(conversationId)
+    api.chat
+      .conversation(conversationId)
       .then((conv) => setMessages(conv.messages ?? []))
-      .catch(() => setMessages([errorMessage("Failed to load conversation history. Please try again.")]))
+      .catch(() =>
+        setMessages([
+          errorMessage(
+            "Failed to load conversation history. Please try again.",
+          ),
+        ]),
+      )
       .finally(() => setIsHistoryLoading(false));
     setActiveConvId(conversationId);
   }, [conversationId]);
@@ -76,7 +91,12 @@ export function ChatWindow({ conversationId, userName, onConversationCreated }: 
         if (content) {
           setMessages((msgs) => [
             ...msgs,
-            { id: crypto.randomUUID(), role: "assistant", content, created_at: new Date().toISOString() },
+            {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content,
+              created_at: new Date().toISOString(),
+            },
           ]);
         }
         setIsLoading(false);
@@ -91,7 +111,10 @@ export function ChatWindow({ conversationId, userName, onConversationCreated }: 
         setStreaming("");
         setIsLoading(false);
         if (hasSentRef.current) {
-          setMessages((prev) => [...prev, errorMessage(msg || "Something went wrong. Please try again.")]);
+          setMessages((prev) => [
+            ...prev,
+            errorMessage(msg || "Something went wrong. Please try again."),
+          ]);
         }
       },
       onStatusChange: (connected) => setWsConnected(connected),
@@ -105,7 +128,12 @@ export function ChatWindow({ conversationId, userName, onConversationCreated }: 
     hasSentRef.current = true;
     setMessages((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), role: "user", content: message, created_at: new Date().toISOString() },
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        content: message,
+        created_at: new Date().toISOString(),
+      },
     ]);
     setIsLoading(true);
     setStreaming("");
@@ -115,18 +143,32 @@ export function ChatWindow({ conversationId, userName, onConversationCreated }: 
       // sent via WebSocket
     } else {
       // Fallback to REST if WS not connected
-      api.chat.send(message, activeConvId).then((res) => {
-        setMessages((prev) => [
-          ...prev,
-          { id: res.message_id || crypto.randomUUID(), role: "assistant", content: res.reply, created_at: new Date().toISOString() },
-        ]);
-        if (!activeConvId) {
-          setActiveConvId(res.conversation_id);
-          onConversationCreated?.(res.conversation_id);
-        }
-      }).catch(() => {
-        setMessages((prev) => [...prev, errorMessage("Failed to send message. Please check your connection and try again.")]);
-      }).finally(() => setIsLoading(false));
+      api.chat
+        .send(message, activeConvId)
+        .then((res) => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: res.message_id || crypto.randomUUID(),
+              role: "assistant",
+              content: res.reply,
+              created_at: new Date().toISOString(),
+            },
+          ]);
+          if (!activeConvId) {
+            setActiveConvId(res.conversation_id);
+            onConversationCreated?.(res.conversation_id);
+          }
+        })
+        .catch(() => {
+          setMessages((prev) => [
+            ...prev,
+            errorMessage(
+              "Failed to send message. Please check your connection and try again.",
+            ),
+          ]);
+        })
+        .finally(() => setIsLoading(false));
     }
   }
 
@@ -143,7 +185,9 @@ export function ChatWindow({ conversationId, userName, onConversationCreated }: 
               {messages.map((m) => (
                 <MessageBubble key={m.id} message={m} userName={userName} />
               ))}
-              {(isLoading || streaming) && <StreamingBubble content={streaming} />}
+              {(isLoading || streaming) && (
+                <StreamingBubble content={streaming} />
+              )}
             </>
           )}
           <div ref={bottomRef} />
@@ -151,7 +195,10 @@ export function ChatWindow({ conversationId, userName, onConversationCreated }: 
       </div>
 
       <div className="max-w-3xl mx-auto w-full px-4 sm:px-6 pb-4">
-        <ChatInput onSend={handleSend} disabled={isLoading || isHistoryLoading} />
+        <ChatInput
+          onSend={handleSend}
+          disabled={isLoading || isHistoryLoading}
+        />
       </div>
     </div>
   );
@@ -204,7 +251,12 @@ function HistorySkeleton() {
 }
 
 function errorMessage(content: string) {
-  return { id: crypto.randomUUID(), role: "error" as const, content, created_at: new Date().toISOString() };
+  return {
+    id: crypto.randomUUID(),
+    role: "error" as const,
+    content,
+    created_at: new Date().toISOString(),
+  };
 }
 
 function EmptyState() {
@@ -214,9 +266,12 @@ function EmptyState() {
         <span className="text-xl">✦</span>
       </div>
       <div>
-        <p className="text-sm font-medium text-text-primary">How can I help you today?</p>
+        <p className="text-sm font-medium text-text-primary">
+          How can I help you today?
+        </p>
         <p className="text-xs text-text-muted mt-1">
-          Ask me to read emails, check your calendar, or remember something important.
+          Ask me to read emails, check your calendar, or remember something
+          important.
         </p>
       </div>
       <div className="flex flex-wrap gap-2 justify-center mt-2">

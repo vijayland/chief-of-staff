@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, type KeyboardEvent } from "react";
 import { ArrowUp, Loader2 } from "lucide-react";
+import { type KeyboardEvent, useRef, useState } from "react";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -9,7 +9,11 @@ interface ChatInputProps {
   placeholder?: string;
 }
 
-export function ChatInput({ onSend, disabled, placeholder = "Message your assistant…" }: ChatInputProps) {
+export function ChatInput({
+  onSend,
+  disabled,
+  placeholder = "Message your assistant…",
+}: ChatInputProps) {
   const [value, setValue] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -40,11 +44,13 @@ export function ChatInput({ onSend, disabled, placeholder = "Message your assist
   return (
     <div className="pt-2">
       <div className="relative">
-        <div className={`
+        <div
+          className={`
           flex flex-col bg-white rounded-2xl border transition-all duration-150
           shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.10)]
           ${disabled ? "border-border opacity-80" : "border-border-strong focus-within:border-[#c0c0c0] focus-within:shadow-[0_4px_16px_rgba(0,0,0,0.10)]"}
-        `}>
+        `}
+        >
           {/* Textarea */}
           <textarea
             ref={ref}
@@ -65,10 +71,14 @@ export function ChatInput({ onSend, disabled, placeholder = "Message your assist
           {/* Bottom bar — actions */}
           <div className="flex items-center justify-between px-3 pb-2.5">
             <span className="text-[11px] text-text-muted select-none">
-              <kbd className="px-1.5 py-0.5 bg-surface-hover rounded text-[10px] border border-border font-sans">↵</kbd>
-              {" "}send &nbsp;·&nbsp;{" "}
-              <kbd className="px-1.5 py-0.5 bg-surface-hover rounded text-[10px] border border-border font-sans">⇧↵</kbd>
-              {" "}new line
+              <kbd className="px-1.5 py-0.5 bg-surface-hover rounded text-[10px] border border-border font-sans">
+                ↵
+              </kbd>{" "}
+              send &nbsp;·&nbsp;{" "}
+              <kbd className="px-1.5 py-0.5 bg-surface-hover rounded text-[10px] border border-border font-sans">
+                ⇧↵
+              </kbd>{" "}
+              new line
             </span>
 
             {/* Send button */}
@@ -78,16 +88,18 @@ export function ChatInput({ onSend, disabled, placeholder = "Message your assist
               disabled={!hasText || disabled}
               className={`
                 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150
-                ${hasText && !disabled
-                  ? "bg-text-primary text-white hover:bg-[#333] shadow-sm hover:scale-105 active:scale-95"
-                  : "bg-[#e8e8e8] text-[#b0b0b0] cursor-not-allowed"
+                ${
+                  hasText && !disabled
+                    ? "bg-text-primary text-white hover:bg-[#333] shadow-sm hover:scale-105 active:scale-95"
+                    : "bg-[#e8e8e8] text-[#b0b0b0] cursor-not-allowed"
                 }
               `}
             >
-              {disabled
-                ? <Loader2 className="w-4 h-4 animate-spin" />
-                : <ArrowUp className="w-4 h-4" />
-              }
+              {disabled ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <ArrowUp className="w-4 h-4" />
+              )}
             </button>
           </div>
         </div>

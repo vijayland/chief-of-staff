@@ -1,7 +1,7 @@
 "use client";
 
-import { Badge } from "@/components/ui/Badge";
 import { Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
 import type { MemoryNode } from "@/types";
 
 interface MemoryCardProps {
@@ -11,9 +11,9 @@ interface MemoryCardProps {
 }
 
 const typeConfig = {
-  semantic:   { label: "Fact",    variant: "blue"   as const },
-  procedural: { label: "Style",   variant: "purple" as const },
-  episodic:   { label: "Episode", variant: "green"  as const },
+  semantic: { label: "Fact", variant: "blue" as const },
+  procedural: { label: "Style", variant: "purple" as const },
+  episodic: { label: "Episode", variant: "green" as const },
 };
 
 const sourceLabels: Record<string, string> = {
@@ -25,7 +25,8 @@ const sourceLabels: Record<string, string> = {
 
 function importanceBar(importance: number) {
   const w = Math.round(importance * 100);
-  const color = importance > 0.7 ? "#2383e2" : importance > 0.4 ? "#d97706" : "#9ca3af";
+  const color =
+    importance > 0.7 ? "#2383e2" : importance > 0.4 ? "#d97706" : "#9ca3af";
   return { w, color };
 }
 
@@ -34,16 +35,22 @@ export function MemoryCard({ memory, similarity, onDelete }: MemoryCardProps) {
   const { w, color } = importanceBar(memory.importance);
 
   return (
-    <div className="group p-4 rounded-[8px] border border-[#e5e5e5] bg-white
-      hover:border-[#d1d5db] hover:shadow-sm transition-all">
+    <div
+      className="group p-4 rounded-[8px] border border-[#e5e5e5] bg-white
+      hover:border-[#d1d5db] hover:shadow-sm transition-all"
+    >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-1.5 flex-wrap">
           <Badge variant={config.variant}>{config.label}</Badge>
           {memory.source && (
-            <span className="text-[11px] text-[#9ca3af]">{sourceLabels[memory.source] ?? memory.source}</span>
+            <span className="text-[11px] text-[#9ca3af]">
+              {sourceLabels[memory.source] ?? memory.source}
+            </span>
           )}
           {similarity !== undefined && (
-            <span className="text-[11px] text-[#16a34a]">{Math.round(similarity * 100)}% match</span>
+            <span className="text-[11px] text-[#16a34a]">
+              {Math.round(similarity * 100)}% match
+            </span>
           )}
         </div>
         <button
@@ -69,7 +76,10 @@ export function MemoryCard({ memory, similarity, onDelete }: MemoryCardProps) {
           <span className="text-[11px] text-[#9ca3af]">{w}%</span>
         </div>
         <span className="text-[11px] text-[#9ca3af]">
-          {new Date(memory.created_at).toLocaleDateString([], { month: "short", day: "numeric" })}
+          {new Date(memory.created_at).toLocaleDateString([], {
+            month: "short",
+            day: "numeric",
+          })}
         </span>
       </div>
     </div>

@@ -1,16 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import {
+  Calendar,
+  Clock,
+  ExternalLink,
+  MapPin,
+  Trash2,
+  Users,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { api } from "@/lib/api";
 import type { CalendarEvent } from "@/types";
-import { Calendar, Clock, MapPin, Users, Trash2, ExternalLink } from "lucide-react";
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+  return new Date(iso).toLocaleDateString([], {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 }
 function formatDuration(start: string, end: string) {
   const mins = (new Date(end).getTime() - new Date(start).getTime()) / 60000;
@@ -56,7 +70,9 @@ export function EventList() {
     }
   }
 
-  useEffect(() => { load(daysAhead); }, [daysAhead]);
+  useEffect(() => {
+    load(daysAhead);
+  }, [daysAhead]);
 
   async function deleteEvent(id: string) {
     await api.calendar.delete(id);
@@ -75,9 +91,10 @@ export function EventList() {
             key={d}
             onClick={() => setDaysAhead(d)}
             className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all
-              ${daysAhead === d
-                ? "bg-text-primary text-white shadow-sm"
-                : "text-text-secondary hover:bg-surface-hover"
+              ${
+                daysAhead === d
+                  ? "bg-text-primary text-white shadow-sm"
+                  : "text-text-secondary hover:bg-surface-hover"
               }`}
           >
             {d} days
@@ -106,7 +123,9 @@ export function EventList() {
               <Calendar className="w-6 h-6 text-text-muted" />
             </div>
             <p className="text-sm font-medium text-text-primary">All clear!</p>
-            <p className="text-xs text-text-muted">No events in the next {daysAhead} days</p>
+            <p className="text-xs text-text-muted">
+              No events in the next {daysAhead} days
+            </p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -152,17 +171,20 @@ export function EventList() {
                         <div className="flex flex-wrap gap-3 mt-1.5">
                           <span className="flex items-center gap-1 text-xs text-text-secondary">
                             <Clock className="w-3 h-3 text-text-muted" />
-                            {formatTime(event.start)} · {formatDuration(event.start, event.end)}
+                            {formatTime(event.start)} ·{" "}
+                            {formatDuration(event.start, event.end)}
                           </span>
                           {event.location && (
                             <span className="flex items-center gap-1 text-xs text-text-secondary">
-                              <MapPin className="w-3 h-3 text-text-muted" /> {event.location}
+                              <MapPin className="w-3 h-3 text-text-muted" />{" "}
+                              {event.location}
                             </span>
                           )}
                           {event.attendees.length > 0 && (
                             <span className="flex items-center gap-1 text-xs text-text-secondary">
                               <Users className="w-3 h-3 text-text-muted" />
-                              {event.attendees.length} attendee{event.attendees.length > 1 ? "s" : ""}
+                              {event.attendees.length} attendee
+                              {event.attendees.length > 1 ? "s" : ""}
                             </span>
                           )}
                         </div>
