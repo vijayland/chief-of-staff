@@ -148,7 +148,10 @@ jobs:
           TF_VAR_encryption_key:       ${{ secrets.ENCRYPTION_KEY }}
           TF_VAR_google_client_id:     ${{ secrets.GOOGLE_CLIENT_ID }}
           TF_VAR_google_client_secret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          TF_VAR_api_image_tag:        ${{ github.sha }}
+          TF_VAR_redis_url:             ${{ secrets.REDIS_URL }}
+          TF_VAR_celery_broker_url:     ${{ secrets.CELERY_BROKER_URL }}
+          TF_VAR_celery_result_backend: ${{ secrets.CELERY_RESULT_BACKEND }}
+          TF_VAR_api_image_tag:         ${{ github.sha }}
 
       - name: Terraform apply
         working-directory: terraform

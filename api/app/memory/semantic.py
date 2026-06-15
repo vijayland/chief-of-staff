@@ -58,9 +58,16 @@ async def search_similar(
         query_embedding = await get_embedding(query)
     embedding_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
 
-    type_filter = ""
+    params: dict = {
+        "embedding": embedding_str,
+        "user_id": str(user_id),
+        "threshold": settings.MEMORY_SIMILARITY_THRESHOLD,
+        "top_k": top_k,
+    }
+    type_clause = ""
     if memory_type:
-        type_filter = f"AND memory_type = '{memory_type.value}'"
+        type_clause = "AND memory_type = :memory_type"
+        params["memory_type"] = memory_type.value
 
     rows = await db.execute(
         text(f"""
@@ -68,17 +75,12 @@ async def search_similar(
             FROM memory_nodes
             WHERE user_id = :user_id
               AND embedding IS NOT NULL
-              {type_filter}
+              {type_clause}
               AND 1 - (embedding <=> CAST(:embedding AS vector)) > :threshold
             ORDER BY similarity DESC
             LIMIT :top_k
         """),
-        {
-            "embedding": embedding_str,
-            "user_id": str(user_id),
-            "threshold": settings.MEMORY_SIMILARITY_THRESHOLD,
-            "top_k": top_k,
-        },
+        params,
     )
     pairs = rows.fetchall()
 

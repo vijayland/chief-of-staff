@@ -60,6 +60,9 @@ resource "aws_ecs_task_definition" "api" {
       { name = "ALLOWED_ORIGINS",          value = "https://${aws_cloudfront_distribution.web.domain_name}" },
       { name = "FRONTEND_URL",             value = "https://${aws_cloudfront_distribution.web.domain_name}" },
       { name = "GOOGLE_REDIRECT_URI",      value = "http://${aws_lb.api.dns_name}/api/v1/auth/google/callback" },
+      { name = "REDIS_URL",               value = var.redis_url },
+      { name = "CELERY_BROKER_URL",      value = var.celery_broker_url },
+      { name = "CELERY_RESULT_BACKEND",  value = var.celery_result_backend },
     ]
 
     secrets = [
@@ -69,7 +72,6 @@ resource "aws_ecs_task_definition" "api" {
       { name = "ENCRYPTION_KEY",       valueFrom = aws_ssm_parameter.encryption_key.arn },
       { name = "GOOGLE_CLIENT_ID",     valueFrom = aws_ssm_parameter.google_client_id.arn },
       { name = "GOOGLE_CLIENT_SECRET", valueFrom = aws_ssm_parameter.google_client_secret.arn },
-      { name = "REDIS_URL",            valueFrom = aws_ssm_parameter.redis_url.arn },
     ]
 
     logConfiguration = {
@@ -165,7 +167,6 @@ resource "aws_iam_role_policy" "ecs_ssm" {
         aws_ssm_parameter.encryption_key.arn,
         aws_ssm_parameter.google_client_id.arn,
         aws_ssm_parameter.google_client_secret.arn,
-        aws_ssm_parameter.redis_url.arn,
       ]
     }]
   })

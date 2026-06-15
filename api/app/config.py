@@ -33,6 +33,8 @@ class Settings(BaseSettings):
 
     # ── Redis (session cache + OAuth state) ───────────────────────────────────
     REDIS_URL: str = ""   # empty = Redis disabled, falls back to in-memory
+    CELERY_BROKER_URL: str = ""
+    CELERY_RESULT_BACKEND: str = ""
 
     # ── Neo4j (optional — graph memory) ──────────────────────────────────────
     NEO4J_URI: str = ""       # empty = Neo4j disabled, app still works

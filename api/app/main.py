@@ -4,10 +4,13 @@ from fastapi import FastAPI, Query, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.v1.router import api_router
 from app.config import settings
 from app.core.events import lifespan
+from app.core.limiter import limiter
 from app.core.logging import configure_logging
 from app.core.middleware import RequestContextMiddleware
 from app.websocket.chat_ws import chat_websocket_handler
@@ -67,7 +70,9 @@ The agent automatically extracts and stores three memory types:
 # Makes the Authorize button in Swagger accept Bearer tokens
 _bearer = HTTPBearer(auto_error=False)
 
+app.state.limiter = limiter
 app.add_middleware(RequestContextMiddleware)
+app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
@@ -75,6 +80,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    return JSONResponse(
+        status_code=429,
+        content={"detail": f"Rate limit exceeded: {exc.detail}"},
+    )
 
 
 @app.exception_handler(Exception)

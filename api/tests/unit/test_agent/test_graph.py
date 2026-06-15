@@ -5,7 +5,7 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_run_agent_returns_response(db):
+async def test_run_agent_returns_response():
     user_id = uuid.uuid4()
     tenant_id = uuid.uuid4()
     conv_id = uuid.uuid4()

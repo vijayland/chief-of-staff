@@ -72,6 +72,27 @@ variable "google_client_secret" {
   sensitive   = true
 }
 
+variable "redis_url" {
+  description = "Redis Cloud connection URL (rediss://...)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "celery_broker_url" {
+  description = "Celery broker URL (Redis db 1)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "celery_result_backend" {
+  description = "Celery result backend URL (Redis db 2)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "neo4j_uri" {
   description = "Neo4j connection URI"
   type        = string

@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import RedirectResponse
 
 from app.config import settings
 from app.core.exceptions import GoogleAuthError, UnauthorizedError
+from app.core.limiter import limiter
 from app.core.security import create_access_token, create_refresh_token, decode_token
 from app.dependencies import CurrentUser, DBSession
 from app.schemas.auth import GoogleAuthURLResponse, TokenResponse, UserResponse
@@ -14,7 +15,8 @@ FRONTEND_URL = settings.FRONTEND_URL
 
 
 @router.get("/google", response_model=GoogleAuthURLResponse, summary="Get Google OAuth URL")
-async def google_auth_url():
+@limiter.limit("10/minute")
+async def google_auth_url(request: Request):
     """
     Generate the Google OAuth 2.0 authorisation URL.
 
@@ -45,7 +47,8 @@ async def google_callback(
 
 
 @router.post("/refresh", response_model=TokenResponse, summary="Refresh access token")
-async def refresh_token(body: dict):
+@limiter.limit("20/minute")
+async def refresh_token(request: Request, body: dict):
     """
     Exchange a valid `refresh_token` for a new token pair.
 

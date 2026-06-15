@@ -1,10 +1,11 @@
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import NotFoundError
+from app.core.limiter import limiter
 from app.db.models.conversation import Conversation
 from app.dependencies import CurrentUser, DBSession
 from app.schemas.chat import (
@@ -19,7 +20,8 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 
 
 @router.post("", response_model=ChatResponse, summary="Send a message to the agent (REST)")
-async def send_message(body: ChatRequest, current_user: CurrentUser, db: DBSession):
+@limiter.limit("30/minute")
+async def send_message(request: Request, body: ChatRequest, current_user: CurrentUser, db: DBSession):
     """
     Send a message to the Chief of Staff agent and get a response.
 

@@ -44,7 +44,9 @@ locals {
     GOOGLE_CLIENT_ID       = var.google_client_id
     GOOGLE_CLIENT_SECRET   = var.google_client_secret
     MEMORY_EMBEDDING_DIM   = "1536"
-    REDIS_URL              = "redis://${aws_elasticache_cluster.redis.cache_nodes[0].address}:6379/0"
+    REDIS_URL              = var.redis_url
+    CELERY_BROKER_URL      = var.celery_broker_url
+    CELERY_RESULT_BACKEND  = var.celery_result_backend
   }
 }
 
