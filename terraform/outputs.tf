@@ -4,8 +4,8 @@ output "cloudfront_url" {
 }
 
 output "api_url" {
-  description = "Backend API URL (App Runner)"
-  value       = "https://${aws_apprunner_service.api.service_url}"
+  description = "Backend API URL (ALB)"
+  value       = "http://${aws_lb.api.dns_name}"
 }
 
 output "ecr_repository_url" {

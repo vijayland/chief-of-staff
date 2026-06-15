@@ -53,14 +53,14 @@ resource "aws_cloudfront_distribution" "web" {
     origin_access_control_id = aws_cloudfront_origin_access_control.web.id
   }
 
-  # API origin — FastAPI via App Runner (HTTPS, no ALB needed)
+  # API origin — FastAPI via ALB
   origin {
-    domain_name = aws_apprunner_service.api.service_url
-    origin_id   = "apprunner-api"
+    domain_name = aws_lb.api.dns_name
+    origin_id   = "alb-api"
     custom_origin_config {
       http_port              = 80
       https_port             = 443
-      origin_protocol_policy = "https-only"
+      origin_protocol_policy = "http-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
@@ -82,7 +82,7 @@ resource "aws_cloudfront_distribution" "web" {
   # /api/* and /ws/* → forward to ALB (FastAPI)
   ordered_cache_behavior {
     path_pattern           = "/api/*"
-    target_origin_id       = "apprunner-api"
+    target_origin_id       = "alb-api"
     viewer_protocol_policy = "redirect-to-https"
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods         = ["GET", "HEAD"]
@@ -97,7 +97,7 @@ resource "aws_cloudfront_distribution" "web" {
 
   ordered_cache_behavior {
     path_pattern           = "/ws/*"
-    target_origin_id       = "apprunner-api"
+    target_origin_id       = "alb-api"
     viewer_protocol_policy = "redirect-to-https"
     allowed_methods        = ["GET", "HEAD"]
     cached_methods         = ["GET", "HEAD"]

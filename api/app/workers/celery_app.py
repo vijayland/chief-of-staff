@@ -15,6 +15,8 @@ celery_app = Celery(
     include=["app.workers.email_sync", "app.workers.calendar_sync"],
 )
 
+import ssl
+
 celery_app.conf.update(
     task_serializer="json",
     result_serializer="json",
@@ -22,4 +24,6 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
     broker_connection_retry_on_startup=True,
+    broker_use_ssl={"ssl_cert_reqs": ssl.CERT_NONE},
+    redis_backend_use_ssl={"ssl_cert_reqs": ssl.CERT_NONE},
 )

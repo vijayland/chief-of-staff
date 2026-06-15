@@ -93,6 +93,12 @@ resource "aws_iam_role_policy" "github_deploy" {
         Action   = ["ec2:*"]
         Resource = "*"
       },
+      # ELB — ALB create/describe/update (separate from ec2:*)
+      {
+        Effect   = "Allow"
+        Action   = ["elasticloadbalancing:*"]
+        Resource = "*"
+      },
       # S3 — sync frontend + lambda code + terraform state
       {
         Effect   = "Allow"

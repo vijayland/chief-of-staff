@@ -16,11 +16,23 @@ variable "environment" {
   default     = "production"
 }
 
-# ── ECR / App Runner ──────────────────────────────────────────────────────────
+# ── ECR / ECS ─────────────────────────────────────────────────────────────────
 variable "api_image_tag" {
   description = "Docker image tag to deploy (injected by CI/CD)"
   type        = string
   default     = "latest"
+}
+
+variable "ecs_cpu" {
+  description = "ECS task CPU units (256, 512, 1024, 2048, 4096)"
+  type        = number
+  default     = 512
+}
+
+variable "ecs_memory" {
+  description = "ECS task memory in MiB"
+  type        = number
+  default     = 1024
 }
 
 # ── App secrets (set via TF_VAR_* env vars in CI/CD) ─────────────────────────

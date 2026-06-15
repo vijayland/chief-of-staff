@@ -239,11 +239,15 @@ jobs:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # ── App Runner — auto-deploys when :latest is pushed to ECR ─────────────
-      - name: Wait for App Runner auto-deployment
+      # ── ECS — force new deployment so Fargate pulls the new image ───────────
+      - name: Deploy to ECS Fargate
         run: |
-          echo "✅ App Runner detects new :latest image and deploys automatically"
-          echo "   Monitor at: https://console.aws.amazon.com/apprunner"
+          aws ecs update-service \
+            --cluster ${{ env.APP_NAME }}-cluster \
+            --service ${{ env.APP_NAME }}-api \
+            --force-new-deployment \
+            --no-cli-pager
+          echo "✅ ECS force-new-deployment triggered"
 
       # ── Frontend — build Next.js static export ────────────────────────────────
       - name: Setup Node 20
@@ -345,7 +349,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Service | Detail |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| App Runner   | Auto-deploy from :latest image |" >> $GITHUB_STEP_SUMMARY
+          echo "| ECS Fargate  | Force-new-deployment triggered |" >> $GITHUB_STEP_SUMMARY
           echo "| Docker image | \`${{ github.sha }}\` pushed to ECR |" >> $GITHUB_STEP_SUMMARY
           echo "| Frontend     | S3 synced + CloudFront invalidated |" >> $GITHUB_STEP_SUMMARY
           echo "| Lambda (3x)  | email / calendar / memory updated |" >> $GITHUB_STEP_SUMMARY
