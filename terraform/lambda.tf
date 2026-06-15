@@ -181,10 +181,22 @@ resource "aws_s3_bucket_public_access_block" "lambda_code" {
   restrict_public_buckets = true
 }
 
-# Placeholder zip so Terraform can create the Lambda on first apply
-# CI/CD replaces this with the real code on every deploy
+# Placeholder zips so Terraform can create Lambdas on first apply
+# CI/CD replaces these with real code on every deploy
 resource "aws_s3_object" "lambda_placeholder" {
   bucket  = aws_s3_bucket.lambda_code.bucket
-  key     = "placeholder.zip"
+  key     = "email_sync.zip"
+  content = ""
+}
+
+resource "aws_s3_object" "lambda_placeholder_calendar" {
+  bucket  = aws_s3_bucket.lambda_code.bucket
+  key     = "calendar_sync.zip"
+  content = ""
+}
+
+resource "aws_s3_object" "lambda_placeholder_memory" {
+  bucket  = aws_s3_bucket.lambda_code.bucket
+  key     = "memory_consolidation.zip"
   content = ""
 }
