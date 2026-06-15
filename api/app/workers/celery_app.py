@@ -4,6 +4,8 @@ Production background jobs run as Lambda functions triggered by EventBridge.
 This file satisfies the "Celery + SQS OR Lambda" requirement in the spec.
 """
 
+import ssl
+
 from celery import Celery
 
 from app.config import settings
@@ -14,8 +16,6 @@ celery_app = Celery(
     backend=settings.CELERY_RESULT_BACKEND or "cache+memory://",
     include=["app.workers.email_sync", "app.workers.calendar_sync"],
 )
-
-import ssl
 
 celery_app.conf.update(
     task_serializer="json",
