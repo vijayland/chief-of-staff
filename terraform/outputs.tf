@@ -4,8 +4,8 @@ output "cloudfront_url" {
 }
 
 output "api_url" {
-  description = "Backend API URL (ALB)"
-  value       = "http://${aws_lb.api.dns_name}"
+  description = "Backend API URL (App Runner)"
+  value       = "https://${aws_apprunner_service.api.service_url}"
 }
 
 output "ecr_repository_url" {
@@ -27,4 +27,3 @@ output "lambda_code_bucket" {
   description = "S3 bucket for Lambda code packages"
   value       = aws_s3_bucket.lambda_code.bucket
 }
-

@@ -117,10 +117,10 @@ resource "aws_iam_role_policy" "github_deploy" {
         Action   = ["events:*"]
         Resource = "*"
       },
-      # ElastiCache — Redis cluster
+      # App Runner — create/update/deploy service
       {
         Effect   = "Allow"
-        Action   = ["elasticache:*"]
+        Action   = ["apprunner:*"]
         Resource = "*"
       },
       # CloudWatch Logs — ECS + Lambda log groups

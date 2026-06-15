@@ -16,23 +16,11 @@ variable "environment" {
   default     = "production"
 }
 
-# ── ECR / ECS ─────────────────────────────────────────────────────────────────
+# ── ECR / App Runner ──────────────────────────────────────────────────────────
 variable "api_image_tag" {
-  description = "Docker image tag to deploy to ECS (injected by CI/CD)"
+  description = "Docker image tag to deploy (injected by CI/CD)"
   type        = string
   default     = "latest"
-}
-
-variable "ecs_cpu" {
-  description = "Fargate task CPU units (256 = 0.25 vCPU)"
-  type        = number
-  default     = 512
-}
-
-variable "ecs_memory" {
-  description = "Fargate task memory in MB"
-  type        = number
-  default     = 1024
 }
 
 # ── App secrets (set via TF_VAR_* env vars in CI/CD) ─────────────────────────
