@@ -40,6 +40,9 @@ jobs:
       - name: TypeScript type check
         run: npx tsc --noEmit
 
+      - name: Build
+        run: npm run build
+
 # ─────────────────────────────────────────────────────────────────────────────
 # JOB 2 — Backend lint & tests  (no Docker, no AWS — fast feedback)
 # ─────────────────────────────────────────────────────────────────────────────
