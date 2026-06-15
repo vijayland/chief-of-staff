@@ -2,10 +2,10 @@
 
 import { Bot } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { saveTokens } from "@/lib/auth";
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const params = useSearchParams();
   const [error, setError] = useState("");
@@ -51,5 +51,24 @@ export default function AuthCallbackPage() {
         <p className="text-sm text-text-secondary">Signing you in…</p>
       </div>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-surface-sidebar">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-text-primary flex items-center justify-center animate-pulse">
+              <Bot className="w-5 h-5 text-white" />
+            </div>
+            <p className="text-sm text-text-secondary">Signing you in…</p>
+          </div>
+        </div>
+      }
+    >
+      <AuthCallbackContent />
+    </Suspense>
   );
 }
