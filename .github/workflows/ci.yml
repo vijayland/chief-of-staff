@@ -173,11 +173,26 @@ jobs:
 # JOB 4 — Docker build → test inside container → push to ECR
 #          ECR is guaranteed to exist because terraform job ran first
 # ─────────────────────────────────────────────────────────────────────────────
-  build-push:
-    name: "Docker — build → push ECR"
-    needs: [terraform]
+  changes:
+    name: "Detect changed paths"
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'api/**'
+
+  build-push:
+    name: "Docker — build → push ECR"
+    needs: [terraform, changes]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.changes.outputs.api == 'true'
 
     permissions:
       id-token: write
@@ -224,7 +239,7 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
   deploy:
     name: "Deploy — ECS + S3 + Lambda"
-    needs: [build-push, terraform]
+    needs: [build-push, terraform, changes]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
