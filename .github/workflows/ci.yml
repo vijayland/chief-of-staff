@@ -307,10 +307,8 @@ jobs:
 
           # Install all api dependencies into /tmp/lambda-pkg
           cd api
-          pip install \
-            $(uv export --no-dev --format requirements-txt 2>/dev/null | grep -v "^-e") \
-            --target /tmp/lambda-pkg \
-            --quiet
+          uv export --no-emit-project --format requirements-txt 2>/dev/null | grep -v "^-e" > /tmp/requirements.txt
+          pip install -r /tmp/requirements.txt --target /tmp/lambda-pkg --quiet
 
           # Copy application code
           cp -r app     /tmp/lambda-pkg/app
