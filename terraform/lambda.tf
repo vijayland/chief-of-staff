@@ -181,26 +181,33 @@ resource "aws_s3_bucket_public_access_block" "lambda_code" {
   restrict_public_buckets = true
 }
 
-# Placeholder zips so Terraform can create Lambdas on first apply
-# CI/CD replaces these with real code on every deploy
-# UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA== is a valid empty zip file (base64)
+# Placeholder zip with a dummy handler — CI/CD replaces with real code
+data "archive_file" "lambda_placeholder" {
+  type        = "zip"
+  output_path = "${path.module}/placeholder.zip"
+  source {
+    content  = "def handler(event, context): return {'statusCode': 200}"
+    filename = "handler.py"
+  }
+}
+
 resource "aws_s3_object" "lambda_placeholder" {
-  bucket          = aws_s3_bucket.lambda_code.bucket
-  key             = "email_sync.zip"
-  content_base64  = "UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA=="
-  content_type    = "application/zip"
+  bucket = aws_s3_bucket.lambda_code.bucket
+  key    = "email_sync.zip"
+  source = data.archive_file.lambda_placeholder.output_path
+  etag   = data.archive_file.lambda_placeholder.output_md5
 }
 
 resource "aws_s3_object" "lambda_placeholder_calendar" {
-  bucket          = aws_s3_bucket.lambda_code.bucket
-  key             = "calendar_sync.zip"
-  content_base64  = "UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA=="
-  content_type    = "application/zip"
+  bucket = aws_s3_bucket.lambda_code.bucket
+  key    = "calendar_sync.zip"
+  source = data.archive_file.lambda_placeholder.output_path
+  etag   = data.archive_file.lambda_placeholder.output_md5
 }
 
 resource "aws_s3_object" "lambda_placeholder_memory" {
-  bucket          = aws_s3_bucket.lambda_code.bucket
-  key             = "memory_consolidation.zip"
-  content_base64  = "UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA=="
-  content_type    = "application/zip"
+  bucket = aws_s3_bucket.lambda_code.bucket
+  key    = "memory_consolidation.zip"
+  source = data.archive_file.lambda_placeholder.output_path
+  etag   = data.archive_file.lambda_placeholder.output_md5
 }
