@@ -89,8 +89,12 @@ async def test_delete_conversation_not_found(client, auth_headers):
 @pytest.mark.asyncio
 async def test_conversations_isolated_between_users(client, db, auth_headers, user, tenant):
     """Another user's conversation must not appear in our list."""
-    other_user_id = uuid.uuid4()
-    await _create_conversation(db, other_user_id, tenant.id, title="Other user chat")
+    from app.db.models.user import User
+    other_user = User(tenant_id=tenant.id, email="other@example.com", full_name="Other", hashed_password="x")
+    db.add(other_user)
+    await db.flush()
+
+    await _create_conversation(db, other_user.id, tenant.id, title="Other user chat")
     await _create_conversation(db, user.id, tenant.id, title="My chat")
     await db.flush()
 

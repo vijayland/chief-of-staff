@@ -99,9 +99,12 @@ async def test_delete_memory(client, db, auth_headers, user, tenant):
 @pytest.mark.asyncio
 async def test_memories_isolated_between_users(client, db, auth_headers, user, tenant):
     """Another user's memories must not appear in our list."""
-    import uuid
-    other_user_id = uuid.uuid4()
-    await _create_memory(db, other_user_id, tenant.id, content="Other user secret")
+    from app.db.models.user import User
+    other_user = User(tenant_id=tenant.id, email="other2@example.com", full_name="Other2", hashed_password="x")
+    db.add(other_user)
+    await db.flush()
+
+    await _create_memory(db, other_user.id, tenant.id, content="Other user secret")
     await _create_memory(db, user.id, tenant.id, content="My memory")
     await db.flush()
 
