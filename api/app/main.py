@@ -1,4 +1,4 @@
-import logging
+import logging  # noqa: F401
 
 from fastapi import FastAPI, Query, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
