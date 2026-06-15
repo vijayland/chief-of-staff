@@ -178,7 +178,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     outputs:
-      api: ${{ steps.filter.outputs.api }}
+      api:      ${{ steps.filter.outputs.api }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      lambda:   ${{ steps.filter.outputs.lambda }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -187,6 +189,11 @@ jobs:
           filters: |
             api:
               - 'api/**'
+            frontend:
+              - 'agent/**'
+            lambda:
+              - 'api/lambdas/**'
+              - 'api/lambda-requirements.txt'
 
   build-push:
     name: "Docker — build → push ECR"
@@ -257,8 +264,9 @@ jobs:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # ── ECS — force new deployment so Fargate pulls the new image ───────────
+      # ── ECS — only redeploy if API code changed ──────────────────────────────
       - name: Deploy to ECS Fargate
+        if: needs.changes.outputs.api == 'true'
         run: |
           aws ecs update-service \
             --cluster ${{ env.APP_NAME }}-cluster \
@@ -276,14 +284,17 @@ jobs:
           cache-dependency-path: agent/package-lock.json
 
       - name: Install frontend dependencies
+        if: needs.changes.outputs.frontend == 'true'
         working-directory: agent
         run: npm ci
 
       - name: Build Next.js static export
+        if: needs.changes.outputs.frontend == 'true'
         working-directory: agent
         run: npm run build
 
       - name: Sync frontend to S3
+        if: needs.changes.outputs.frontend == 'true'
         run: |
           S3=${{ needs.terraform.outputs.s3_bucket }}
 
@@ -303,6 +314,7 @@ jobs:
           echo "✅ Frontend synced to S3"
 
       - name: Invalidate CloudFront cache
+        if: needs.changes.outputs.frontend == 'true'
         run: |
           ID=$(aws cloudfront create-invalidation \
             --distribution-id ${{ needs.terraform.outputs.cf_id }} \
@@ -317,6 +329,7 @@ jobs:
           python-version: "3.11"
 
       - name: Package Lambda functions
+        if: needs.changes.outputs.lambda == 'true'
         run: |
           pip install uv --quiet
 
@@ -336,6 +349,7 @@ jobs:
           echo "✅ Lambda packages created"
 
       - name: Upload Lambda zips to S3
+        if: needs.changes.outputs.lambda == 'true'
         run: |
           LB=${{ needs.terraform.outputs.lambda_bucket }}
           aws s3 cp /tmp/email_sync.zip           s3://$LB/email_sync.zip
@@ -344,6 +358,7 @@ jobs:
           echo "✅ Lambda zips uploaded"
 
       - name: Update Lambda function code
+        if: needs.changes.outputs.lambda == 'true'
         run: |
           LB=${{ needs.terraform.outputs.lambda_bucket }}
 
