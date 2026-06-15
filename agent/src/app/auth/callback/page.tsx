@@ -2,7 +2,7 @@
 
 import { Bot } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { saveTokens } from "@/lib/auth";
 
 function AuthCallbackContent() {
