@@ -27,11 +27,21 @@ def _get_redis():
         return None
 
     try:
+        import ssl
+
         import redis.asyncio as aioredis
+
+        ssl_context = None
+        if settings.REDIS_URL and settings.REDIS_URL.startswith("rediss://"):
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+
         _redis = aioredis.from_url(
             settings.REDIS_URL,
             encoding="utf-8",
             decode_responses=True,
+            ssl_context=ssl_context,
         )
         logger.info("Redis connected — session caching active")
     except Exception as exc:
