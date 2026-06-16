@@ -228,7 +228,7 @@ jobs:
     if: |
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
-      (needs.changes.outputs.api == 'true' || inputs.force_backend == true || needs.terraform.outputs.ecr_empty == 'true')
+      ((github.event_name == 'push' && needs.changes.outputs.api == 'true') || inputs.force_backend == true || needs.terraform.outputs.ecr_empty == 'true')
 
     permissions:
       id-token: write
@@ -307,7 +307,7 @@ jobs:
     if: |
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
-      (needs.changes.outputs.frontend == 'true' || inputs.force_frontend == true || needs.terraform.outputs.s3_empty == 'true')
+      ((github.event_name == 'push' && needs.changes.outputs.frontend == 'true') || inputs.force_frontend == true || needs.terraform.outputs.s3_empty == 'true')
 
     permissions:
       id-token: write
@@ -360,7 +360,7 @@ jobs:
     if: |
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
-      (needs.changes.outputs.lambda == 'true' || inputs.force_lambda == true || needs.terraform.outputs.lambda_bucket_empty == 'true')
+      ((github.event_name == 'push' && needs.changes.outputs.lambda == 'true') || inputs.force_lambda == true || needs.terraform.outputs.lambda_bucket_empty == 'true')
 
     permissions:
       id-token: write
