@@ -181,6 +181,9 @@ jobs:
           TF_VAR_redis_url:             ${{ secrets.REDIS_URL }}
           TF_VAR_celery_broker_url:     ${{ secrets.CELERY_BROKER_URL }}
           TF_VAR_celery_result_backend: ${{ secrets.CELERY_RESULT_BACKEND }}
+          TF_VAR_neo4j_uri:             ${{ secrets.NEO4J_URI }}
+          TF_VAR_neo4j_user:            ${{ secrets.NEO4J_USER }}
+          TF_VAR_neo4j_password:        ${{ secrets.NEO4J_PASSWORD }}
           TF_VAR_api_image_tag:         ${{ github.sha }}
 
       - name: Terraform apply

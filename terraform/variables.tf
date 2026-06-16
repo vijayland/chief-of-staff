@@ -99,6 +99,12 @@ variable "neo4j_uri" {
   default     = ""
 }
 
+variable "neo4j_user" {
+  description = "Neo4j username"
+  type        = string
+  default     = "neo4j"
+}
+
 variable "neo4j_password" {
   description = "Neo4j password"
   type        = string

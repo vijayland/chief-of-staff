@@ -63,6 +63,9 @@ resource "aws_ecs_task_definition" "api" {
       { name = "REDIS_URL",                value = var.redis_url },
       { name = "CELERY_BROKER_URL",        value = var.celery_broker_url },
       { name = "CELERY_RESULT_BACKEND",    value = var.celery_result_backend },
+      { name = "NEO4J_URI",               value = var.neo4j_uri },
+      { name = "NEO4J_USER",              value = var.neo4j_user },
+      { name = "NEO4J_PASSWORD",          value = var.neo4j_password },
     ]
 
     secrets = [
