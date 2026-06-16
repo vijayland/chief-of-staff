@@ -150,8 +150,9 @@ jobs:
       cf_id:          ${{ steps.outputs.outputs.cf_id }}
       lambda_bucket:  ${{ steps.outputs.outputs.lambda_bucket }}
       api_url:        ${{ steps.outputs.outputs.api_url }}
-      ecr_empty:      ${{ steps.freshness.outputs.ecr_empty }}
-      s3_empty:       ${{ steps.freshness.outputs.s3_empty }}
+      ecr_empty:           ${{ steps.freshness.outputs.ecr_empty }}
+      s3_empty:            ${{ steps.freshness.outputs.s3_empty }}
+      lambda_bucket_empty: ${{ steps.freshness.outputs.lambda_bucket_empty }}
 
     steps:
       - uses: actions/checkout@v4
@@ -209,8 +210,11 @@ jobs:
             --query 'length(imageIds)' --output text)
           S3_COUNT=$(aws s3 ls s3://$(terraform -chdir=terraform output -raw web_s3_bucket)/ \
             --recursive --summarize | grep "Total Objects" | awk '{print $3}')
-          echo "ecr_empty=$( [ "${ECR_COUNT:-0}" -eq 0 ] && echo true || echo false )" >> $GITHUB_OUTPUT
-          echo "s3_empty=$( [ "${S3_COUNT:-0}" -eq 0 ] && echo true || echo false )"  >> $GITHUB_OUTPUT
+          LAMBDA_COUNT=$(aws s3 ls s3://$(terraform -chdir=terraform output -raw lambda_code_bucket)/ \
+            --recursive --summarize | grep "Total Objects" | awk '{print $3}')
+          echo "ecr_empty=$( [ "${ECR_COUNT:-0}" -eq 0 ] && echo true || echo false )"             >> $GITHUB_OUTPUT
+          echo "s3_empty=$( [ "${S3_COUNT:-0}" -eq 0 ] && echo true || echo false )"               >> $GITHUB_OUTPUT
+          echo "lambda_bucket_empty=$( [ "${LAMBDA_COUNT:-0}" -eq 0 ] && echo true || echo false )" >> $GITHUB_OUTPUT
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Docker build → push ECR  (api/ changed OR ECR empty OR force_backend=true)
@@ -354,7 +358,7 @@ jobs:
     if: |
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
-      (needs.changes.outputs.lambda == 'true' || inputs.force_lambda == true)
+      (needs.changes.outputs.lambda == 'true' || inputs.force_lambda == true || needs.terraform.outputs.lambda_bucket_empty == 'true')
 
     permissions:
       id-token: write
