@@ -252,9 +252,12 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
   deploy-ecs:
     name: "Deploy — ECS Fargate"
-    needs: [build-push]
+    needs: [terraform, build-push]
     runs-on: ubuntu-latest
-    if: always() && needs.build-push.result == 'success'
+    if: |
+      always() &&
+      needs.terraform.result == 'success' &&
+      (needs.build-push.result == 'success' || needs.build-push.result == 'skipped')
 
     permissions:
       id-token: write
@@ -271,6 +274,7 @@ jobs:
           aws ecs update-service \
             --cluster ${{ env.APP_NAME }}-cluster \
             --service ${{ env.APP_NAME }}-api \
+            --task-definition ${{ env.APP_NAME }}-api \
             --force-new-deployment \
             --no-cli-pager
 
