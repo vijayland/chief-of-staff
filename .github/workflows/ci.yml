@@ -146,10 +146,12 @@ jobs:
       contents: read
 
     outputs:
-      s3_bucket:     ${{ steps.outputs.outputs.s3_bucket }}
-      cf_id:         ${{ steps.outputs.outputs.cf_id }}
-      lambda_bucket: ${{ steps.outputs.outputs.lambda_bucket }}
-      api_url:       ${{ steps.outputs.outputs.api_url }}
+      s3_bucket:      ${{ steps.outputs.outputs.s3_bucket }}
+      cf_id:          ${{ steps.outputs.outputs.cf_id }}
+      lambda_bucket:  ${{ steps.outputs.outputs.lambda_bucket }}
+      api_url:        ${{ steps.outputs.outputs.api_url }}
+      ecr_empty:      ${{ steps.freshness.outputs.ecr_empty }}
+      s3_empty:       ${{ steps.freshness.outputs.s3_empty }}
 
     steps:
       - uses: actions/checkout@v4
@@ -199,8 +201,19 @@ jobs:
           echo "lambda_bucket=$(terraform output -raw lambda_code_bucket)" >> $GITHUB_OUTPUT
           echo "api_url=$(terraform output -raw api_url)"                  >> $GITHUB_OUTPUT
 
+      - name: Check if ECR and S3 are empty (first deploy detection)
+        id: freshness
+        run: |
+          ECR_COUNT=$(aws ecr list-images \
+            --repository-name ${{ env.APP_NAME }}-api \
+            --query 'length(imageIds)' --output text)
+          S3_COUNT=$(aws s3 ls s3://$(terraform -chdir=terraform output -raw web_s3_bucket)/ \
+            --recursive --summarize | grep "Total Objects" | awk '{print $3}')
+          echo "ecr_empty=$( [ "${ECR_COUNT:-0}" -eq 0 ] && echo true || echo false )" >> $GITHUB_OUTPUT
+          echo "s3_empty=$( [ "${S3_COUNT:-0}" -eq 0 ] && echo true || echo false )"  >> $GITHUB_OUTPUT
+
 # ─────────────────────────────────────────────────────────────────────────────
-# Docker build → push ECR  (api/ changed OR force_backend=true)
+# Docker build → push ECR  (api/ changed OR ECR empty OR force_backend=true)
 # ─────────────────────────────────────────────────────────────────────────────
   build-push:
     name: "Docker — build & push ECR"
@@ -209,7 +222,7 @@ jobs:
     if: |
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
-      (needs.changes.outputs.api == 'true' || inputs.force_backend == true)
+      (needs.changes.outputs.api == 'true' || inputs.force_backend == true || needs.terraform.outputs.ecr_empty == 'true')
 
     permissions:
       id-token: write
@@ -288,7 +301,7 @@ jobs:
     if: |
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
-      (needs.changes.outputs.frontend == 'true' || inputs.force_frontend == true)
+      (needs.changes.outputs.frontend == 'true' || inputs.force_frontend == true || needs.terraform.outputs.s3_empty == 'true')
 
     permissions:
       id-token: write
