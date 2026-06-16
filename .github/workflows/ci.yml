@@ -5,6 +5,16 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_frontend:
+        description: "Force deploy frontend"
+        type: boolean
+        default: false
+      deploy_lambda:
+        description: "Force deploy lambda"
+        type: boolean
+        default: false
 
 env:
   AWS_REGION: us-east-1
@@ -141,6 +151,7 @@ jobs:
       s3_bucket:     ${{ steps.outputs.outputs.s3_bucket }}
       cf_id:         ${{ steps.outputs.outputs.cf_id }}
       lambda_bucket: ${{ steps.outputs.outputs.lambda_bucket }}
+      api_url:       ${{ steps.outputs.outputs.api_url }}
 
     steps:
       - uses: actions/checkout@v4
@@ -185,6 +196,7 @@ jobs:
           echo "s3_bucket=$(terraform output -raw web_s3_bucket)"          >> $GITHUB_OUTPUT
           echo "cf_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
           echo "lambda_bucket=$(terraform output -raw lambda_code_bucket)" >> $GITHUB_OUTPUT
+          echo "api_url=$(terraform output -raw api_url)"                  >> $GITHUB_OUTPUT
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Docker build → push ECR  (only when api/ files change)
@@ -276,8 +288,8 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       github.ref == 'refs/heads/main' &&
-      github.event_name == 'push' &&
-      needs.changes.outputs.frontend == 'true'
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (needs.changes.outputs.frontend == 'true' || inputs.deploy_frontend == true)
 
     permissions:
       id-token: write
@@ -299,6 +311,8 @@ jobs:
 
       - name: Install & build
         working-directory: agent
+        env:
+          NEXT_PUBLIC_API_URL: ${{ needs.terraform.outputs.api_url }}
         run: npm ci && npm run build
 
       - name: Sync to S3
@@ -329,8 +343,8 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       github.ref == 'refs/heads/main' &&
-      github.event_name == 'push' &&
-      needs.changes.outputs.lambda == 'true'
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (needs.changes.outputs.lambda == 'true' || inputs.deploy_lambda == true)
 
     permissions:
       id-token: write

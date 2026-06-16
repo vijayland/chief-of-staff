@@ -70,7 +70,7 @@ class Settings(BaseSettings):
     EMAIL_SYNC_MAX_RESULTS: int = 50
 
     # ── Memory ────────────────────────────────────────────────────────────────
-    MEMORY_EMBEDDING_DIM: int = 512
+    MEMORY_EMBEDDING_DIM: int = 1536
     MEMORY_SIMILARITY_THRESHOLD: float = 0.75
     MEMORY_MAX_CONTEXT_ITEMS: int = 10
     MEMORY_CONSOLIDATION_HOUR: int = 2
