@@ -1,4 +1,4 @@
-"use client";
+"use client"; // deploy
 
 import { Bot } from "lucide-react";
 import { useRouter } from "next/navigation";
