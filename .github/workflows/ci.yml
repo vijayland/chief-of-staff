@@ -7,6 +7,10 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      deploy_backend:
+        description: "Force build & deploy backend (Docker + ECS)"
+        type: boolean
+        default: false
       deploy_frontend:
         description: "Force deploy frontend"
         type: boolean
@@ -207,8 +211,8 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       github.ref == 'refs/heads/main' &&
-      github.event_name == 'push' &&
-      needs.changes.outputs.api == 'true'
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (needs.changes.outputs.api == 'true' || inputs.deploy_backend == true)
 
     permissions:
       id-token: write
@@ -256,8 +260,8 @@ jobs:
     if: |
       always() &&
       github.ref == 'refs/heads/main' &&
-      github.event_name == 'push' &&
-      needs.changes.outputs.api == 'true' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (needs.changes.outputs.api == 'true' || inputs.deploy_backend == true) &&
       needs.build-push.result == 'success'
 
     permissions:
