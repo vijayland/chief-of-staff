@@ -4,6 +4,7 @@
 .env.*.local
 *.pem
 *.key
+terraform-apply.ps1
 
 # Python
 __pycache__/
