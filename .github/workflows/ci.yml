@@ -1,58 +1,13 @@
-name: CI / CD
+name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      deploy_backend:
-        description: "Force build & deploy backend (Docker + ECS)"
-        type: boolean
-        default: false
-      deploy_frontend:
-        description: "Force deploy frontend"
-        type: boolean
-        default: false
-      deploy_lambda:
-        description: "Force deploy lambda"
-        type: boolean
-        default: false
-
-env:
-  AWS_REGION: us-east-1
-  APP_NAME: chief-of-staff
 
 jobs:
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Detect which paths changed (runs in parallel with tests)
-# ─────────────────────────────────────────────────────────────────────────────
-  changes:
-    name: "Detect changed paths"
-    runs-on: ubuntu-latest
-    outputs:
-      api:      ${{ steps.filter.outputs.api }}
-      frontend: ${{ steps.filter.outputs.frontend }}
-      lambda:   ${{ steps.filter.outputs.lambda }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            api:
-              - 'api/**'
-            frontend:
-              - 'agent/**'
-            lambda:
-              - 'api/lambdas/**'
-              - 'api/lambda-requirements.txt'
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Frontend — lint + type check + build
-# ─────────────────────────────────────────────────────────────────────────────
   test-web:
     name: "Web — lint, types & build"
     runs-on: ubuntu-latest
@@ -68,21 +23,11 @@ jobs:
           cache: npm
           cache-dependency-path: agent/package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm run build
 
-      - name: Lint
-        run: npm run lint
-
-      - name: TypeScript type check
-        run: npx tsc --noEmit
-
-      - name: Build
-        run: npm run build
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Backend — lint + tests
-# ─────────────────────────────────────────────────────────────────────────────
   test-api:
     name: "API — lint & tests"
     runs-on: ubuntu-latest
@@ -122,8 +67,7 @@ jobs:
           uv pip install --system -e ".[dev]"
           uv pip install --system ruff pytest pytest-asyncio pytest-cov
 
-      - name: Lint
-        run: ruff check app/
+      - run: ruff check app/
 
       - name: Tests
         run: pytest --no-cov -x -q
@@ -137,263 +81,3 @@ jobs:
           GOOGLE_CLIENT_ID: dummy
           GOOGLE_CLIENT_SECRET: dummy
           MEMORY_EMBEDDING_DIM: "1536"
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Terraform — provision infrastructure (main branch only)
-# ─────────────────────────────────────────────────────────────────────────────
-  terraform:
-    name: "Terraform — provision infrastructure"
-    needs: [test-web, test-api, changes]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-    permissions:
-      id-token: write
-      contents: read
-
-    outputs:
-      s3_bucket:     ${{ steps.outputs.outputs.s3_bucket }}
-      cf_id:         ${{ steps.outputs.outputs.cf_id }}
-      lambda_bucket: ${{ steps.outputs.outputs.lambda_bucket }}
-      api_url:       ${{ steps.outputs.outputs.api_url }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.7.0"
-          terraform_wrapper: false
-
-      - name: Terraform init
-        working-directory: terraform
-        run: terraform init
-
-      - name: Terraform plan
-        working-directory: terraform
-        run: terraform plan -out=tfplan
-        env:
-          TF_VAR_database_url:          ${{ secrets.DATABASE_URL }}
-          TF_VAR_secret_key:            ${{ secrets.SECRET_KEY }}
-          TF_VAR_openai_api_key:        ${{ secrets.OPENAI_API_KEY }}
-          TF_VAR_encryption_key:        ${{ secrets.ENCRYPTION_KEY }}
-          TF_VAR_google_client_id:      ${{ secrets.GOOGLE_CLIENT_ID }}
-          TF_VAR_google_client_secret:  ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          TF_VAR_redis_url:             ${{ secrets.REDIS_URL }}
-          TF_VAR_celery_broker_url:     ${{ secrets.CELERY_BROKER_URL }}
-          TF_VAR_celery_result_backend: ${{ secrets.CELERY_RESULT_BACKEND }}
-          TF_VAR_api_image_tag:         ${{ github.sha }}
-
-      - name: Terraform apply
-        working-directory: terraform
-        run: terraform apply -auto-approve tfplan
-
-      - name: Read outputs
-        id: outputs
-        working-directory: terraform
-        run: |
-          echo "s3_bucket=$(terraform output -raw web_s3_bucket)"          >> $GITHUB_OUTPUT
-          echo "cf_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
-          echo "lambda_bucket=$(terraform output -raw lambda_code_bucket)" >> $GITHUB_OUTPUT
-          echo "api_url=$(terraform output -raw api_url)"                  >> $GITHUB_OUTPUT
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Docker build → push ECR  (only when api/ files change)
-# ─────────────────────────────────────────────────────────────────────────────
-  build-push:
-    name: "Docker — build & push ECR"
-    needs: [terraform, changes]
-    runs-on: ubuntu-latest
-    if: |
-      github.ref == 'refs/heads/main' &&
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
-      (needs.changes.outputs.api == 'true' || inputs.deploy_backend == true)
-
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Resolve ECR image tags
-        id: meta
-        run: |
-          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-          REPO="${ACCOUNT}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.APP_NAME }}-api"
-          echo "image_tag=${REPO}:${{ github.sha }}" >> $GITHUB_OUTPUT
-          echo "image_latest=${REPO}:latest"          >> $GITHUB_OUTPUT
-
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: ./api
-          file: ./api/docker/Dockerfile
-          push: true
-          tags: |
-            ${{ steps.meta.outputs.image_tag }}
-            ${{ steps.meta.outputs.image_latest }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Deploy ECS — only when api/ changed
-# ─────────────────────────────────────────────────────────────────────────────
-  deploy-ecs:
-    name: "Deploy — ECS Fargate"
-    needs: [build-push, changes]
-    runs-on: ubuntu-latest
-    if: |
-      always() &&
-      github.ref == 'refs/heads/main' &&
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
-      (needs.changes.outputs.api == 'true' || inputs.deploy_backend == true) &&
-      needs.build-push.result == 'success'
-
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Force new ECS deployment
-        run: |
-          aws ecs update-service \
-            --cluster ${{ env.APP_NAME }}-cluster \
-            --service ${{ env.APP_NAME }}-api \
-            --force-new-deployment \
-            --no-cli-pager
-          echo "✅ ECS redeployed with new image"
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Deploy Frontend — only when agent/ changed
-# ─────────────────────────────────────────────────────────────────────────────
-  deploy-frontend:
-    name: "Deploy — Frontend (S3 + CloudFront)"
-    needs: [terraform, changes]
-    runs-on: ubuntu-latest
-    if: |
-      github.ref == 'refs/heads/main' &&
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
-      (needs.changes.outputs.frontend == 'true' || inputs.deploy_frontend == true)
-
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: agent/package-lock.json
-
-      - name: Install & build
-        working-directory: agent
-        env:
-          NEXT_PUBLIC_API_URL: ${{ needs.terraform.outputs.api_url }}
-        run: npm ci && npm run build
-
-      - name: Sync to S3
-        run: |
-          S3=${{ needs.terraform.outputs.s3_bucket }}
-          aws s3 sync agent/out s3://$S3 \
-            --cache-control "public,max-age=31536000,immutable"
-          aws s3 sync agent/out s3://$S3 \
-            --exclude "*" --include "*.html" \
-            --cache-control "no-cache,no-store,must-revalidate" \
-            --metadata-directive REPLACE
-          aws s3 sync agent/out s3://$S3 --delete --size-only
-          echo "✅ Frontend synced to S3"
-
-      - name: Invalidate CloudFront cache
-        run: |
-          aws cloudfront create-invalidation \
-            --distribution-id ${{ needs.terraform.outputs.cf_id }} \
-            --paths "/*" --query 'Invalidation.Id' --output text
-          echo "✅ CloudFront cache invalidated"
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Deploy Lambda — only when lambdas/ or lambda-requirements.txt changed
-# ─────────────────────────────────────────────────────────────────────────────
-  deploy-lambda:
-    name: "Deploy — Lambda functions"
-    needs: [terraform, changes]
-    runs-on: ubuntu-latest
-    if: |
-      github.ref == 'refs/heads/main' &&
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
-      (needs.changes.outputs.lambda == 'true' || inputs.deploy_lambda == true)
-
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Package Lambda functions
-        run: |
-          cd api
-          pip install -r lambda-requirements.txt --target /tmp/lambda-pkg --quiet
-          cp -r app     /tmp/lambda-pkg/app
-          cp -r lambdas /tmp/lambda-pkg/lambdas
-          cd /tmp/lambda-pkg
-          zip -r /tmp/email_sync.zip           . -x "*.pyc" "__pycache__/*" > /dev/null
-          zip -r /tmp/calendar_sync.zip        . -x "*.pyc" "__pycache__/*" > /dev/null
-          zip -r /tmp/memory_consolidation.zip . -x "*.pyc" "__pycache__/*" > /dev/null
-          echo "✅ Lambda packages created"
-
-      - name: Upload zips to S3
-        run: |
-          LB=${{ needs.terraform.outputs.lambda_bucket }}
-          aws s3 cp /tmp/email_sync.zip           s3://$LB/email_sync.zip
-          aws s3 cp /tmp/calendar_sync.zip        s3://$LB/calendar_sync.zip
-          aws s3 cp /tmp/memory_consolidation.zip s3://$LB/memory_consolidation.zip
-          echo "✅ Zips uploaded to S3"
-
-      - name: Update Lambda function code
-        run: |
-          LB=${{ needs.terraform.outputs.lambda_bucket }}
-          for fn in email-sync calendar-sync memory-consolidation; do
-            aws lambda update-function-code \
-              --function-name ${{ env.APP_NAME }}-${fn} \
-              --s3-bucket $LB \
-              --s3-key ${fn//-/_}.zip \
-              --no-cli-pager
-            echo "✅ Updated: ${{ env.APP_NAME }}-${fn}"
-          done
