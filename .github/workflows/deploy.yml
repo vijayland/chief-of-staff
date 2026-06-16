@@ -1,8 +1,12 @@
 name: Deploy
 
 on:
-  push:
+  # Auto-deploy only after CI tests pass on main
+  workflow_run:
+    workflows: ["CI"]
     branches: [main]
+    types: [completed]
+  # Manual deploy — skips the CI gate (use when you know tests pass)
   workflow_dispatch:
     inputs:
       force_backend:
@@ -30,6 +34,11 @@ jobs:
   changes:
     name: "Detect changed paths"
     runs-on: ubuntu-latest
+    # For auto-deploys: only proceed if CI tests passed
+    # For manual deploys (workflow_dispatch): always proceed
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     outputs:
       api:      ${{ steps.filter.outputs.api }}
       frontend: ${{ steps.filter.outputs.frontend }}
