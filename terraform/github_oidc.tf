@@ -17,12 +17,6 @@ data "aws_iam_openid_connect_provider" "github" {
   url = "https://token.actions.githubusercontent.com"
 }
 
-# Import the existing role into state instead of trying to create it
-import {
-  to = aws_iam_role.github_deploy
-  id = "chief-of-staff-github-deploy"
-}
-
 resource "aws_iam_role" "github_deploy" {
   name = "${var.app_name}-github-deploy"
 
@@ -84,7 +78,8 @@ resource "aws_iam_role_policy" "github_deploy" {
                     "iam:DeleteInstanceProfile", "iam:AddRoleToInstanceProfile",
                     "iam:RemoveRoleFromInstanceProfile", "iam:GetInstanceProfile",
                     "iam:CreateOpenIDConnectProvider", "iam:GetOpenIDConnectProvider",
-                    "iam:DeleteOpenIDConnectProvider", "iam:TagOpenIDConnectProvider"]
+                    "iam:DeleteOpenIDConnectProvider", "iam:TagOpenIDConnectProvider",
+                    "iam:ListOpenIDConnectProviders"]
         Resource = "*"
       },
       # EC2 / VPC — full access for Terraform networking
