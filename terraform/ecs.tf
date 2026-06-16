@@ -59,7 +59,7 @@ resource "aws_ecs_task_definition" "api" {
       { name = "MEMORY_EMBEDDING_DIM",     value = "1536" },
       { name = "ALLOWED_ORIGINS",          value = "https://${aws_cloudfront_distribution.web.domain_name}" },
       { name = "FRONTEND_URL",             value = "https://${aws_cloudfront_distribution.web.domain_name}" },
-      { name = "GOOGLE_REDIRECT_URI",      value = "http://${aws_lb.api.dns_name}/api/v1/auth/google/callback" },
+      { name = "GOOGLE_REDIRECT_URI",      value = "https://${aws_cloudfront_distribution.web.domain_name}/api/v1/auth/google/callback" },
       { name = "REDIS_URL",                value = var.redis_url },
       { name = "CELERY_BROKER_URL",        value = var.celery_broker_url },
       { name = "CELERY_RESULT_BACKEND",    value = var.celery_result_backend },

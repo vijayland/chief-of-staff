@@ -146,10 +146,11 @@ jobs:
       contents: read
 
     outputs:
-      s3_bucket:      ${{ steps.outputs.outputs.s3_bucket }}
-      cf_id:          ${{ steps.outputs.outputs.cf_id }}
-      lambda_bucket:  ${{ steps.outputs.outputs.lambda_bucket }}
-      api_url:        ${{ steps.outputs.outputs.api_url }}
+      s3_bucket:           ${{ steps.outputs.outputs.s3_bucket }}
+      cf_id:               ${{ steps.outputs.outputs.cf_id }}
+      cf_url:              ${{ steps.outputs.outputs.cf_url }}
+      lambda_bucket:       ${{ steps.outputs.outputs.lambda_bucket }}
+      api_url:             ${{ steps.outputs.outputs.api_url }}
       ecr_empty:           ${{ steps.freshness.outputs.ecr_empty }}
       s3_empty:            ${{ steps.freshness.outputs.s3_empty }}
       lambda_bucket_empty: ${{ steps.freshness.outputs.lambda_bucket_empty }}
@@ -199,6 +200,7 @@ jobs:
         run: |
           echo "s3_bucket=$(terraform output -raw web_s3_bucket)"          >> $GITHUB_OUTPUT
           echo "cf_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
+          echo "cf_url=$(terraform output -raw cloudfront_url)"            >> $GITHUB_OUTPUT
           echo "lambda_bucket=$(terraform output -raw lambda_code_bucket)" >> $GITHUB_OUTPUT
           echo "api_url=$(terraform output -raw api_url)"                  >> $GITHUB_OUTPUT
 
@@ -328,7 +330,7 @@ jobs:
       - name: Install & build
         working-directory: agent
         env:
-          NEXT_PUBLIC_API_URL: ${{ needs.terraform.outputs.api_url }}
+          NEXT_PUBLIC_API_URL: ${{ needs.terraform.outputs.cf_url }}
         run: npm ci && npm run build
 
       - name: Sync to S3
