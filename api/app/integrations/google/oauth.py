@@ -49,12 +49,25 @@ async def get_authorization_url() -> tuple[str, str]:
 
 
 async def exchange_code(code: str, state: str) -> dict:
+    import logging
+    _log = logging.getLogger(__name__)
+
     flow = build_flow(state=state)
     code_verifier = await cache.get_oauth_state(state)
-    # If PKCE was used but the verifier is gone (container restart/redeploy), fail fast
-    # with a clear message rather than letting Google return an obscure token error.
+
     if settings.REDIS_URL and code_verifier is None:
-        raise ValueError("OAuth session expired — please sign in again.")
+        # PKCE verifier missing — Redis may be unreachable or state expired.
+        # Log clearly so CloudWatch shows the real reason, then attempt token
+        # exchange without PKCE (works only if the original auth request also
+        # omitted code_challenge, which happens when Redis was down during
+        # get_authorization_url).  If Google rejects it, the outer try/except
+        # in the route handler will catch the error and redirect with auth_failed.
+        _log.warning(
+            "PKCE code_verifier missing for state=%s (REDIS_URL set=%s). "
+            "Attempting token exchange without code_verifier.",
+            state, bool(settings.REDIS_URL),
+        )
+
     flow.fetch_token(code=code, code_verifier=code_verifier)
     creds = flow.credentials
     return {

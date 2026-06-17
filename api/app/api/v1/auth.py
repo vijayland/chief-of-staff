@@ -48,7 +48,10 @@ async def google_callback(
     try:
         tokens = await auth_service.handle_google_login(db, code, state)
     except Exception as exc:
-        logger.exception("Google OAuth callback failed: %s", exc)
+        logger.exception(
+            "Google OAuth callback failed — type=%s msg=%s",
+            type(exc).__name__, exc,
+        )
         return RedirectResponse(url=f"{FRONTEND_URL}/auth/callback?error=auth_failed")
     redirect_url = (
         f"{FRONTEND_URL}/auth/callback"
