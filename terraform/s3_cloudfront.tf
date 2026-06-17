@@ -40,6 +40,26 @@ resource "aws_s3_bucket_policy" "web" {
   })
 }
 
+# ── CloudFront Function — rewrite SPA paths to /index.html ───────────────────
+# Next.js static export (trailingSlash: true) generates auth/callback/index.html.
+# CloudFront fetches from S3 by exact path, so /auth/callback → 404 unless we
+# rewrite it to /auth/callback/index.html before the S3 request.
+resource "aws_cloudfront_function" "spa_router" {
+  name    = "${var.app_name}-spa-router"
+  runtime = "cloudfront-js-1.0"
+  comment = "Rewrite SPA paths to index.html for Next.js static export"
+  publish = true
+  code    = <<-EOT
+    function handler(event) {
+      var uri = event.request.uri;
+      if (!uri.includes('.')) {
+        event.request.uri = uri.endsWith('/') ? uri + 'index.html' : uri + '/index.html';
+      }
+      return event.request;
+    }
+  EOT
+}
+
 # ── CloudFront distribution ───────────────────────────────────────────────────
 resource "aws_cloudfront_distribution" "web" {
   enabled             = true
@@ -76,6 +96,11 @@ resource "aws_cloudfront_distribution" "web" {
     forwarded_values {
       query_string = false
       cookies { forward = "none" }
+    }
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.spa_router.arn
     }
   }
 
