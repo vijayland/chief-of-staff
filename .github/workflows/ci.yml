@@ -374,16 +374,19 @@ jobs:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
       - name: Package Lambda functions
         run: |
-          cd api
-          pip install -r lambda-requirements.txt --target /tmp/lambda-pkg --quiet
-          cp -r app     /tmp/lambda-pkg/app
-          cp -r lambdas /tmp/lambda-pkg/lambdas
+          # Install deps inside the Lambda runtime image so native binaries
+          # (cryptography Rust extension) match Amazon Linux 2 GLIBC 2.26,
+          # not the Ubuntu runner's GLIBC 2.35.
+          docker run --rm \
+            -v "${{ github.workspace }}/api":/src \
+            -v /tmp/lambda-pkg:/out \
+            public.ecr.aws/lambda/python:3.11 \
+            pip install -r /src/lambda-requirements.txt --target /out --quiet
+
+          cp -r api/app     /tmp/lambda-pkg/app
+          cp -r api/lambdas /tmp/lambda-pkg/lambdas
           cd /tmp/lambda-pkg
           zip -r /tmp/email_sync.zip           . -x "*.pyc" "__pycache__/*" > /dev/null
           zip -r /tmp/calendar_sync.zip        . -x "*.pyc" "__pycache__/*" > /dev/null
