@@ -3,7 +3,13 @@ CALENDAR_TOOL_SCHEMAS: list[dict] = [
         "type": "function",
         "function": {
             "name": "list_calendar_events",
-            "description": "List upcoming Google Calendar events.",
+            "description": (
+                "Fetch the user's REAL Google Calendar events. "
+                "ALWAYS call this tool before answering ANY question about the user's schedule, "
+                "meetings, availability, or upcoming events — even if you think you already know. "
+                "Never guess or answer from memory. Use days_ahead=7 by default; "
+                "increase to 14 or 30 if the user asks about a date further out."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
