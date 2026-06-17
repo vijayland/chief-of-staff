@@ -36,7 +36,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onClose }: SidebarProps) {
-  const { activeConvId, setActiveConvId, refreshTrigger } = useChatContext();
+  const { activeConvId, setActiveConvId } = useChatContext();
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -63,7 +63,7 @@ export function Sidebar({ onClose }: SidebarProps) {
       .then(setConversations)
       .catch(() => null)
       .finally(() => setLoadingConvs(false));
-  }, [isChat, refreshTrigger]);
+  }, [isChat]);
 
   function logout() {
     clearTokens();

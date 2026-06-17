@@ -1,5 +1,10 @@
 import type { WSMessage } from "@/types";
-import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from "./auth";
+import {
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  saveTokens,
+} from "./auth";
 
 function getWsBase(): string {
   if (process.env.NEXT_PUBLIC_API_URL) {

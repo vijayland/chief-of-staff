@@ -29,6 +29,7 @@ export function MessageBubble({
           <span>{message.content}</span>
           {onRetry && (
             <button
+              type="button"
               onClick={onRetry}
               className="ml-1 flex items-center gap-1 text-red-500 hover:text-red-700
                 font-medium whitespace-nowrap hover:underline"
