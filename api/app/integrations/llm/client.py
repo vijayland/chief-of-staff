@@ -45,6 +45,7 @@ async def chat_completion(
     system: str = "",
     tools: list[dict] | None = None,
     model_override: str | None = None,
+    tool_choice: str | dict = "auto",
 ) -> object:
     """Send a chat request to OpenAI with automatic retry on rate-limit."""
     all_messages = []
@@ -59,7 +60,7 @@ async def chat_completion(
     }
     if tools:
         kwargs["tools"] = tools
-        kwargs["tool_choice"] = "auto"
+        kwargs["tool_choice"] = tool_choice
 
     for attempt in range(4):
         try:
