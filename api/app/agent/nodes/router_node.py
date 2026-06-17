@@ -13,25 +13,6 @@ from app.integrations.llm.client import chat_completion
 
 logger = structlog.get_logger()
 
-_CALENDAR_WORDS = {"schedule", "calendar", "meeting", "today", "tomorrow", "week", "event", "appointment", "plan"}
-_EMAIL_WORDS = {"email", "mail", "inbox", "unread", "message", "gmail"}
-
-
-def _required_tool(messages: list[dict]) -> str | None:
-    """Force a tool on the first turn when the user's question clearly needs live data."""
-    if any(m.get("role") == "tool" for m in messages):
-        return None  # already fetched data this turn
-    last = next((m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), "")
-    if not isinstance(last, str):
-        return None
-    words = set(last.lower().split())
-    if words & _CALENDAR_WORDS:
-        return "list_calendar_events"
-    if words & _EMAIL_WORDS:
-        return "list_emails"
-    return None
-
-
 async def router_node(state: AgentState) -> AgentState:
     memory_ctx = state.get("memory_context", "")
     system = CHIEF_OF_STAFF_SYSTEM.format(
@@ -39,8 +20,13 @@ async def router_node(state: AgentState) -> AgentState:
         current_datetime=datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
     )
 
-    forced = _required_tool(state["messages"])
-    tool_choice = {"type": "function", "function": {"name": forced}} if forced else "auto"
+    # Let GPT-4o decide which tool to call (or none) based on the system prompt.
+    # Keyword-based forcing was removed — it caused wrong tool calls whenever the
+    # user's message happened to contain a calendar/email word in a non-data context
+    # e.g. "what's the plan?" → "plan" forced a calendar call incorrectly.
+    tool_choice: str | dict = "auto"
+
+    logger.info("router_decision", tool_choice=str(tool_choice))
 
     try:
         response = await chat_completion(
@@ -61,32 +47,78 @@ async def router_node(state: AgentState) -> AgentState:
 
     choice = response.choices[0]
 
-    # Groq signals tool use with finish_reason == "tool_calls"
     if choice.finish_reason == "tool_calls":
         tool_calls = choice.message.tool_calls or []
-        parsed_calls = [
-            {
-                "id": tc.id,
-                "name": tc.function.name,
-                "input": json.loads(tc.function.arguments),
+
+        if not tool_calls:
+            # finish_reason said tool_calls but list is empty — OpenAI edge case.
+            # Retry with auto so the model generates a plain-text reply instead.
+            logger.warning("router_empty_tool_calls_retrying")
+            response = await chat_completion(
+                messages=state["messages"],
+                system=system,
+                tools=ALL_TOOLS,
+                tool_choice="auto",
+            )
+            choice = response.choices[0]
+            tool_calls = (choice.message.tool_calls or []) if choice.finish_reason == "tool_calls" else []
+
+        if tool_calls:
+            parsed_calls = [
+                {
+                    "id": tc.id,
+                    "name": tc.function.name,
+                    "input": json.loads(tc.function.arguments),
+                }
+                for tc in tool_calls
+            ]
+
+            # Preserve the full message (including any model-specific fields) so
+            # subsequent requests don't fail with missing-field errors.
+            assistant_msg = choice.message.model_dump(exclude_unset=False, exclude_none=True)
+            assistant_msg["role"] = "assistant"
+
+            return {
+                **state,
+                "messages": state["messages"] + [assistant_msg],
+                "tool_outputs": parsed_calls,
+                "is_complete": False,
             }
-            for tc in tool_calls
-        ]
-
-        # Preserve the full message from Gemini (including thought_signature) so
-        # subsequent requests don't fail with "missing thought_signature" errors.
-        assistant_msg = choice.message.model_dump(exclude_unset=False, exclude_none=True)
-        assistant_msg["role"] = "assistant"
-
-        return {
-            **state,
-            "messages": state["messages"] + [assistant_msg],
-            "tool_outputs": parsed_calls,
-            "is_complete": False,
-        }
 
     # Plain text response — done
     text = choice.message.content or ""
+
+    if not text:
+        # Model returned stop with empty content — retry once with auto so it can
+        # generate a useful reply (happens when history has repeated empty messages).
+        logger.warning("router_empty_text_retrying")
+        response2 = await chat_completion(
+            messages=state["messages"],
+            system=system,
+            tools=ALL_TOOLS,
+            tool_choice="auto",
+        )
+        choice = response2.choices[0]
+        if choice.finish_reason == "tool_calls" and (choice.message.tool_calls or []):
+            tool_calls = choice.message.tool_calls or []
+            parsed_calls = [
+                {
+                    "id": tc.id,
+                    "name": tc.function.name,
+                    "input": json.loads(tc.function.arguments),
+                }
+                for tc in tool_calls
+            ]
+            assistant_msg = choice.message.model_dump(exclude_unset=False, exclude_none=True)
+            assistant_msg["role"] = "assistant"
+            return {
+                **state,
+                "messages": state["messages"] + [assistant_msg],
+                "tool_outputs": parsed_calls,
+                "is_complete": False,
+            }
+        text = choice.message.content or ""
+
     return {
         **state,
         "messages": state["messages"] + [{"role": "assistant", "content": text}],

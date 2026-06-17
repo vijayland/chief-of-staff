@@ -135,6 +135,16 @@ async def chat_websocket_handler(websocket: WebSocket, token: str):
                 continue
 
             # ── Step 3: Stream reply to client ──
+            if not reply:
+                # Agent completed but produced no text — surface a visible error so
+                # the user isn't left staring at disappeared loading dots.
+                logger.warning("ws_empty_reply", conv_id=str(conv_id))
+                await websocket.send_json({
+                    "type": "error",
+                    "content": "I couldn't generate a response. Please try again.",
+                })
+                continue
+
             chunk_size = 50
             for i in range(0, len(reply), chunk_size):
                 await websocket.send_json({"type": "token", "content": reply[i:i + chunk_size]})

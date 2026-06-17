@@ -28,6 +28,7 @@ export function ChatWindow({
   const [_wsConnected, setWsConnected] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const hasSentRef = useRef(false);
+  const lastUserMessageRef = useRef<string>("");
   // Tracks whether the next conversationId change is from a freshly created conversation
   // (so we skip reloading history we already have from streaming)
   const skipNextHistoryLoadRef = useRef(false);
@@ -131,6 +132,7 @@ export function ChatWindow({
 
   function handleSend(message: string) {
     hasSentRef.current = true;
+    lastUserMessageRef.current = message;
     setMessages((prev) => [
       ...prev,
       {
@@ -200,7 +202,16 @@ export function ChatWindow({
           ) : (
             <>
               {messages.map((m) => (
-                <MessageBubble key={m.id} message={m} userName={userName} />
+                <MessageBubble
+                  key={m.id}
+                  message={m}
+                  userName={userName}
+                  onRetry={
+                    m.role === "error" && lastUserMessageRef.current
+                      ? () => handleSend(lastUserMessageRef.current)
+                      : undefined
+                  }
+                />
               ))}
               {(isLoading || streaming) && (
                 <StreamingBubble content={streaming} />

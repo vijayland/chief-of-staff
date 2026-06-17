@@ -1,4 +1,4 @@
-import { AlertCircle, Bot } from "lucide-react";
+import { AlertCircle, Bot, RotateCcw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Avatar } from "@/components/ui/Avatar";
@@ -7,11 +7,13 @@ import type { Message } from "@/types";
 interface MessageBubbleProps {
   message: Message;
   userName?: string;
+  onRetry?: () => void;
 }
 
 export function MessageBubble({
   message,
   userName = "You",
+  onRetry,
 }: MessageBubbleProps) {
   const isUser = message.role === "user";
   const isError = message.role === "error";
@@ -25,6 +27,16 @@ export function MessageBubble({
         >
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{message.content}</span>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="ml-1 flex items-center gap-1 text-red-500 hover:text-red-700
+                font-medium whitespace-nowrap hover:underline"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Retry
+            </button>
+          )}
         </div>
       </div>
     );

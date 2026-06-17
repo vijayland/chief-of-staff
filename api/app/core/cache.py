@@ -29,13 +29,11 @@ def _get_redis():
     try:
         import redis.asyncio as aioredis
 
-        kwargs: dict = {"encoding": "utf-8", "decode_responses": True}
-        if settings.REDIS_URL.startswith("rediss://"):
-            # redis-py uses ssl_cert_reqs / ssl_check_hostname, NOT ssl_context
-            kwargs["ssl_cert_reqs"] = None
-            kwargs["ssl_check_hostname"] = False
-
-        _redis = aioredis.from_url(settings.REDIS_URL, **kwargs)
+        _redis = aioredis.from_url(
+            settings.REDIS_URL,
+            encoding="utf-8",
+            decode_responses=True,
+        )
         logger.info("Redis connected — session caching active")
     except Exception as exc:
         logger.warning("Redis unavailable, using in-memory fallback: %s", exc)

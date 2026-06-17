@@ -1,5 +1,5 @@
 import type { WSMessage } from "@/types";
-import { getAccessToken } from "./auth";
+import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from "./auth";
 
 function getWsBase(): string {
   if (process.env.NEXT_PUBLIC_API_URL) {
@@ -25,6 +25,25 @@ export type WSCallbacks = {
 
 // Ping every 25s so ALB (60s idle timeout) never closes an idle connection.
 const PING_INTERVAL_MS = 25_000;
+
+async function refreshAccessToken(): Promise<boolean> {
+  const refresh = getRefreshToken();
+  if (!refresh) return false;
+  try {
+    const base = process.env.NEXT_PUBLIC_API_URL ?? "";
+    const res = await fetch(`${base}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    saveTokens(data.access_token, data.refresh_token);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export class ChatSocket {
   private ws: WebSocket | null = null;
@@ -81,13 +100,22 @@ export class ChatSocket {
     this.ws.onclose = (event) => {
       this.stopPing();
       this.callbacks.onStatusChange?.(false);
-      // 4001 = auth failure (bad/expired token) — don't retry
-      if (event.code === 4001) return;
-      // If a request was in-flight when the connection dropped, surface the error
-      // so the UI exits the loading state instead of showing infinite dots.
       if (this.requestInFlight) {
         this.requestInFlight = false;
         this.callbacks.onError("Connection lost. Please try again.");
+      }
+      // 4001 = auth failure — try refreshing the token once, then reconnect
+      if (event.code === 4001) {
+        refreshAccessToken().then((ok) => {
+          if (ok) {
+            this.scheduleReconnect();
+          } else {
+            // Refresh failed — force re-login
+            clearTokens();
+            if (typeof window !== "undefined") window.location.href = "/";
+          }
+        });
+        return;
       }
       this.scheduleReconnect();
     };

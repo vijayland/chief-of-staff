@@ -43,6 +43,10 @@ async def get_conversation_history(db: AsyncSession, conversation_id: uuid.UUID)
     history = []
     for m in messages:
         content = m.content
+        # Skip empty assistant messages — they are artifacts of prior agent failures
+        # and confuse the model into returning empty responses on subsequent turns.
+        if m.role == "assistant" and not content:
+            continue
         # Truncate oversized tool results stored in history (email bodies etc.)
         if m.role == "tool" and len(content) > 2000:
             content = content[:2000] + "… [truncated]"
