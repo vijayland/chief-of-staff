@@ -49,6 +49,8 @@ jobs:
             lambda:
               - 'api/lambdas/**'
               - 'api/lambda-requirements.txt'
+              - 'terraform/lambda.tf'
+              - '.github/workflows/ci.yml'
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Frontend — lint + type check + build
