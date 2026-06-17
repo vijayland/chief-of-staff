@@ -89,17 +89,35 @@ async def chat_completion(
 
 
 async def get_embedding(text: str) -> list[float]:
-    """Embed text using text-embedding-3-small (1536-dim)."""
+    """Embed text using text-embedding-3-small (1536-dim).
+
+    Cache flow:
+      1. Check Redis — same text always produces same embedding (deterministic)
+      2. Miss → call OpenAI API → store in Redis for 7 days
+      Benefit: repeated queries ("check my calendar", "what do I have today?")
+      hit cache instead of paying OpenAI each time.
+    """
+    from app.core.cache import get_embedding as cache_get, set_embedding as cache_set
+
     text = text.replace("\n", " ").strip()
     dims = settings.MEMORY_EMBEDDING_DIM
 
+    # 1. Try Redis cache
+    cached = await cache_get(text)
+    if cached:
+        return cached
+
+    # 2. Call OpenAI
     for attempt in range(3):
         try:
             response = await _openai.embeddings.create(
                 model=settings.OPENAI_EMBEDDING_MODEL,
                 input=text,
             )
-            return response.data[0].embedding
+            embedding = response.data[0].embedding
+            # 3. Cache result for 7 days
+            await cache_set(text, embedding)
+            return embedding
         except RateLimitError:
             if attempt == 2:
                 break

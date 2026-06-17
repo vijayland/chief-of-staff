@@ -5,6 +5,12 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import (
+    get_google_creds,
+    invalidate_google_creds,
+    invalidate_user,
+    set_google_creds,
+)
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -33,7 +39,6 @@ async def get_google_auth_url() -> dict:
 
 
 async def _get_google_profile(access_token: str) -> dict:
-    """Fetch the user's profile from Google userinfo endpoint."""
     async with httpx.AsyncClient() as client:
         resp = await client.get(
             "https://www.googleapis.com/oauth2/v2/userinfo",
@@ -44,22 +49,17 @@ async def _get_google_profile(access_token: str) -> dict:
 
 
 async def handle_google_login(db: AsyncSession, code: str, state: str) -> dict:
-    """
-    Full Google login flow — works for both first-time and returning users.
-    Returns JWT tokens ready to send to the frontend.
-    """
+    """Full Google login flow. Returns JWT tokens ready to send to the frontend."""
     token_data = await google_oauth.exchange_code(code, state)
     profile = await _get_google_profile(token_data["access_token"])
 
     email: str = profile["email"]
     full_name: str = profile.get("name", email.split("@")[0])
 
-    # Find existing user or create new one
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
     if not user:
-        # Auto-create tenant from email domain
         domain = email.split("@")[1].replace(".", "-")
         tenant_result = await db.execute(select(Tenant).where(Tenant.slug == domain))
         tenant = tenant_result.scalar_one_or_none()
@@ -77,7 +77,6 @@ async def handle_google_login(db: AsyncSession, code: str, state: str) -> dict:
         db.add(user)
         await db.flush()
 
-    # Upsert OAuth tokens
     expiry = None
     if token_data.get("expiry"):
         expiry = datetime.fromisoformat(token_data["expiry"])
@@ -105,12 +104,38 @@ async def handle_google_login(db: AsyncSession, code: str, state: str) -> dict:
 
     user.google_connected = True
     await db.flush()
-    invalidate_user_cache(str(user.id))
 
+    # Postgres updated → invalidate Redis caches so next request re-hydrates
+    await invalidate_user(str(user.id))
+    await invalidate_google_creds(str(user.id))
+
+    # Pre-warm Google creds cache with fresh tokens
+    refresh = token_data.get("refresh_token")
+    await set_google_creds(str(user.id), token_data["access_token"], refresh)
+
+    invalidate_user_cache(str(user.id))
     return issue_tokens(user)
 
 
 async def get_google_credentials(db: AsyncSession, user_id: uuid.UUID):
+    """
+    Returns Google Credentials for the user.
+
+    Cache flow:
+      1. Check Redis (cache hit → no DB query, no decrypt)
+      2. Miss → fetch encrypted tokens from Postgres → decrypt → cache in Redis
+      3. TTL = 50 min (tokens expire in 60 min, refresh happens before expiry)
+
+    Postgres sync: invalidate_google_creds() called on login and token refresh.
+    """
+    uid = str(user_id)
+
+    # 1. Try Redis
+    cached = await get_google_creds(uid)
+    if cached:
+        return build_credentials(cached["access"], cached["refresh"])
+
+    # 2. Cache miss → Postgres
     result = await db.execute(
         select(OAuthToken).where(OAuthToken.user_id == user_id, OAuthToken.provider == "google")
     )
@@ -120,4 +145,8 @@ async def get_google_credentials(db: AsyncSession, user_id: uuid.UUID):
 
     access = decrypt_value(token.encrypted_access_token)
     refresh = decrypt_value(token.encrypted_refresh_token) if token.encrypted_refresh_token else None
+
+    # 3. Write to Redis
+    await set_google_creds(uid, access, refresh)
+
     return build_credentials(access, refresh)

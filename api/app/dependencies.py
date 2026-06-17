@@ -1,27 +1,46 @@
-import time
-from typing import Annotated
+import uuid
 
 from fastapi import Depends, Header
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import make_transient
+from typing import Annotated
 
+from app.core.cache import get_user, invalidate_user, set_user
 from app.core.exceptions import ForbiddenError, UnauthorizedError
 from app.core.security import decode_token
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
 from app.db.session import get_db
 
-# Short-lived process-level cache to avoid a DB hit on every concurrent request.
-# Values are detached User instances (make_transient) — scalar columns remain
-# accessible; lazy relationships are not used in route handlers.
-_USER_CACHE: dict[str, tuple[User, float]] = {}
-_USER_CACHE_TTL = 60.0  # seconds
+
+def _user_to_dict(user: User) -> dict:
+    return {
+        "id": str(user.id),
+        "tenant_id": str(user.tenant_id),
+        "email": user.email,
+        "full_name": user.full_name,
+        "is_active": user.is_active,
+        "is_admin": user.is_admin,
+        "google_connected": user.google_connected,
+        "timezone": user.timezone,
+        "preferred_name": user.preferred_name,
+    }
 
 
-def invalidate_user_cache(user_id: str) -> None:
-    """Call after mutating a User row so the next request re-fetches from DB."""
-    _USER_CACHE.pop(str(user_id), None)
+def _dict_to_user(data: dict) -> User:
+    user = User()
+    user.id = uuid.UUID(data["id"])
+    user.tenant_id = uuid.UUID(data["tenant_id"])
+    user.email = data["email"]
+    user.full_name = data["full_name"]
+    user.is_active = data["is_active"]
+    user.is_admin = data["is_admin"]
+    user.google_connected = data["google_connected"]
+    user.timezone = data["timezone"]
+    user.preferred_name = data["preferred_name"]
+    make_transient(user)
+    return user
 
 
 async def get_current_user(
@@ -42,28 +61,22 @@ async def get_current_user(
 
     user_id = payload.get("sub")
 
-    now = time.monotonic()
-    cached = _USER_CACHE.get(user_id)
-    if cached and now - cached[1] < _USER_CACHE_TTL:
-        return cached[0]
+    # 1. Try Redis first
+    cached = await get_user(user_id)
+    if cached:
+        return _dict_to_user(cached)
 
+    # 2. Cache miss → hit Postgres
     result = await db.execute(select(User).where(User.id == user_id, User.is_active))
     user = result.scalar_one_or_none()
 
     if not user:
         raise UnauthorizedError("User not found or inactive")
 
-    # Detach from session before caching so it is not bound to any transaction.
+    # 3. Write to Redis, detach from session
+    await set_user(user_id, _user_to_dict(user))
     db.expunge(user)
     make_transient(user)
-    _USER_CACHE[user_id] = (user, now)
-
-    # Prune expired entries to avoid unbounded growth.
-    if len(_USER_CACHE) > 1000:
-        cutoff = now - _USER_CACHE_TTL
-        expired = [k for k, (_, t) in _USER_CACHE.items() if t < cutoff]
-        for k in expired:
-            _USER_CACHE.pop(k, None)
 
     return user
 
@@ -83,6 +96,20 @@ def require_admin(current_user: Annotated[User, Depends(get_current_user)]) -> U
     if not current_user.is_admin:
         raise ForbiddenError("Admin access required")
     return current_user
+
+
+# Replace the old in-process invalidate_user_cache with Redis version
+def invalidate_user_cache(user_id: str) -> None:
+    """Sync shim — schedules Redis invalidation. Use invalidate_user() directly in async code."""
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.ensure_future(invalidate_user(user_id))
+        else:
+            loop.run_until_complete(invalidate_user(user_id))
+    except Exception:
+        pass
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
