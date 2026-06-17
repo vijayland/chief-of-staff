@@ -68,6 +68,7 @@ async def _sync_user_email(db, user: User) -> None:
         response = await chat_completion(
             messages=[{"role": "user", "content": f"Emails:\n{email_text}"}],
             system=MEMORY_EXTRACTION_SYSTEM,
+            model_override="gpt-4o-mini",
         )
         raw = response.choices[0].message.content.strip()
         if raw.startswith("```"):
