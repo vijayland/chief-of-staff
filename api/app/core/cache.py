@@ -27,22 +27,15 @@ def _get_redis():
         return None
 
     try:
-        import ssl
-
         import redis.asyncio as aioredis
 
-        ssl_context = None
-        if settings.REDIS_URL and settings.REDIS_URL.startswith("rediss://"):
-            ssl_context = ssl.create_default_context()
-            ssl_context.check_hostname = False
-            ssl_context.verify_mode = ssl.CERT_NONE
+        kwargs: dict = {"encoding": "utf-8", "decode_responses": True}
+        if settings.REDIS_URL.startswith("rediss://"):
+            # redis-py uses ssl_cert_reqs / ssl_check_hostname, NOT ssl_context
+            kwargs["ssl_cert_reqs"] = None
+            kwargs["ssl_check_hostname"] = False
 
-        _redis = aioredis.from_url(
-            settings.REDIS_URL,
-            encoding="utf-8",
-            decode_responses=True,
-            ssl_context=ssl_context,
-        )
+        _redis = aioredis.from_url(settings.REDIS_URL, **kwargs)
         logger.info("Redis connected — session caching active")
     except Exception as exc:
         logger.warning("Redis unavailable, using in-memory fallback: %s", exc)
