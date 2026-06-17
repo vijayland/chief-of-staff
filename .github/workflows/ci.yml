@@ -405,10 +405,9 @@ jobs:
                 /var/lang/bin/pip install -r /src/lambda-requirements.txt \
                   --target /out \
                   --prefer-binary \
-                  --quiet"
-
-          cp -r api/app     /tmp/lambda-pkg/app
-          cp -r api/lambdas /tmp/lambda-pkg/lambdas
+                  --quiet && \
+                cp -r /src/app /out/app && \
+                cp -r /src/lambdas /out/lambdas"
           cd /tmp/lambda-pkg
           zip -r /tmp/email_sync.zip           . -x "*.pyc" "__pycache__/*" > /dev/null
           zip -r /tmp/calendar_sync.zip        . -x "*.pyc" "__pycache__/*" > /dev/null
