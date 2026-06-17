@@ -36,7 +36,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onClose }: SidebarProps) {
-  const { activeConvId, setActiveConvId } = useChatContext();
+  const { activeConvId, setActiveConvId, refreshTrigger } = useChatContext();
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -45,7 +45,7 @@ export function Sidebar({ onClose }: SidebarProps) {
   const [loadingConvs, setLoadingConvs] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const isChat = pathname === "/dashboard";
+  const isChat = pathname === "/dashboard" || pathname === "/dashboard/";
 
   useEffect(() => {
     api.auth
@@ -63,7 +63,7 @@ export function Sidebar({ onClose }: SidebarProps) {
       .then(setConversations)
       .catch(() => null)
       .finally(() => setLoadingConvs(false));
-  }, [isChat]);
+  }, [isChat, refreshTrigger]);
 
   function logout() {
     clearTokens();
@@ -147,6 +147,7 @@ export function Sidebar({ onClose }: SidebarProps) {
           {NAV.map(({ href, icon: Icon, label }) => {
             const active =
               pathname === href ||
+              pathname === `${href}/` ||
               (href !== "/dashboard" && pathname.startsWith(href));
             return (
               <Link
