@@ -18,5 +18,5 @@ def handler(event, context):
 
 
 async def _run():
-    from app.workers.email_sync import sync_all_users_email
-    await sync_all_users_email()
+    from app.workers.email_sync import _sync_all
+    await _sync_all()

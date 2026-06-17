@@ -18,5 +18,5 @@ def handler(event, context):
 
 
 async def _run():
-    from app.workers.memory_consolidation import consolidate_all_users
-    await consolidate_all_users()
+    from app.workers.memory_consolidation import _consolidate_all
+    await _consolidate_all()

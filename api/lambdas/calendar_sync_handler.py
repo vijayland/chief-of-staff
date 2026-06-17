@@ -18,5 +18,5 @@ def handler(event, context):
 
 
 async def _run():
-    from app.workers.calendar_sync import sync_all_users_calendar
-    await sync_all_users_calendar()
+    from app.workers.calendar_sync import _sync_all
+    await _sync_all()
