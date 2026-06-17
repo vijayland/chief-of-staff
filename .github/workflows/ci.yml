@@ -401,7 +401,11 @@ jobs:
             -v "${{ github.workspace }}/api":/src \
             -v /tmp/lambda-pkg:/out \
             public.ecr.aws/lambda/python:3.11 \
-            -c "/var/lang/bin/pip install -r /src/lambda-requirements.txt --target /out --quiet"
+            -c "yum install -y gcc gcc-c++ python3-devel --quiet && \
+                /var/lang/bin/pip install -r /src/lambda-requirements.txt \
+                  --target /out \
+                  --prefer-binary \
+                  --quiet"
 
           cp -r api/app     /tmp/lambda-pkg/app
           cp -r api/lambdas /tmp/lambda-pkg/lambdas
