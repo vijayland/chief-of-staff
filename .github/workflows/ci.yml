@@ -380,10 +380,11 @@ jobs:
           # (cryptography Rust extension) match Amazon Linux 2 GLIBC 2.26,
           # not the Ubuntu runner's GLIBC 2.35.
           docker run --rm \
+            --entrypoint /bin/bash \
             -v "${{ github.workspace }}/api":/src \
             -v /tmp/lambda-pkg:/out \
             public.ecr.aws/lambda/python:3.11 \
-            pip install -r /src/lambda-requirements.txt --target /out --quiet
+            -c "/var/lang/bin/pip install -r /src/lambda-requirements.txt --target /out --quiet"
 
           cp -r api/app     /tmp/lambda-pkg/app
           cp -r api/lambdas /tmp/lambda-pkg/lambdas

@@ -38,7 +38,7 @@ locals {
     DATABASE_URL           = var.database_url
     SECRET_KEY             = var.secret_key
     OPENAI_API_KEY         = var.openai_api_key
-    OPENAI_MODEL           = "gpt-4o-mini"
+    OPENAI_MODEL           = "gpt-4o"
     OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
     ENCRYPTION_KEY         = var.encryption_key
     GOOGLE_CLIENT_ID       = var.google_client_id

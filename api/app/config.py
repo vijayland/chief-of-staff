@@ -43,7 +43,7 @@ class Settings(BaseSettings):
 
     # ── OpenAI (chat + embeddings) ────────────────────────────────────────────
     OPENAI_API_KEY: str
-    OPENAI_MODEL: str = "gpt-4o-mini"
+    OPENAI_MODEL: str = "gpt-4o"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     OPENAI_MAX_TOKENS: int = 4096
 

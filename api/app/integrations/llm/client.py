@@ -1,6 +1,6 @@
 """LLM client — OpenAI for both chat and embeddings.
 
-Chat  : gpt-4o-mini           ($0.15/1M input, $0.60/1M output)
+Chat  : gpt-4o                ($2.50/1M input, $10.00/1M output)
 Embed : text-embedding-3-small ($0.02/1M tokens, 1536-dim)
 """
 

@@ -54,7 +54,7 @@ resource "aws_ecs_task_definition" "api" {
 
     environment = [
       { name = "APP_ENV",                  value = "production" },
-      { name = "OPENAI_MODEL",             value = "gpt-4o-mini" },
+      { name = "OPENAI_MODEL",             value = "gpt-4o" },
       { name = "OPENAI_EMBEDDING_MODEL",   value = "text-embedding-3-small" },
       { name = "MEMORY_EMBEDDING_DIM",     value = "1536" },
       { name = "ALLOWED_ORIGINS",          value = "https://${aws_cloudfront_distribution.web.domain_name}" },
