@@ -27,7 +27,9 @@ env:
 jobs:
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Detect which paths changed
+# Detect which paths changed since the last SUCCESSFUL deploy (not last commit)
+# Last deployed SHA is stored in SSM after each successful deploy-ecs/frontend/lambda.
+# This means: if CI failed mid-way 3 pushes ago, those changes are still detected.
 # ─────────────────────────────────────────────────────────────────────────────
   changes:
     name: "Detect changed paths"
@@ -36,21 +38,66 @@ jobs:
       api:      ${{ steps.filter.outputs.api }}
       frontend: ${{ steps.filter.outputs.frontend }}
       lambda:   ${{ steps.filter.outputs.lambda }}
+
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
         with:
-          filters: |
-            api:
-              - 'api/**'
-            frontend:
-              - 'agent/**'
-            lambda:
-              - 'api/lambdas/**'
-              - 'api/lambda-requirements.txt'
-              - 'terraform/lambda.tf'
-              - '.github/workflows/ci.yml'
+          fetch-depth: 0  # full history needed for git diff against old SHA
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Detect changes since last successful deploy
+        id: filter
+        run: |
+          # Read last deployed SHA from SSM (empty string on first ever deploy)
+          LAST_API=$(aws ssm get-parameter \
+            --name "/${{ env.APP_NAME }}/last-deployed-api-sha" \
+            --query "Parameter.Value" --output text 2>/dev/null || echo "")
+          LAST_FRONTEND=$(aws ssm get-parameter \
+            --name "/${{ env.APP_NAME }}/last-deployed-frontend-sha" \
+            --query "Parameter.Value" --output text 2>/dev/null || echo "")
+          LAST_LAMBDA=$(aws ssm get-parameter \
+            --name "/${{ env.APP_NAME }}/last-deployed-lambda-sha" \
+            --query "Parameter.Value" --output text 2>/dev/null || echo "")
+
+          echo "Last deployed — api: ${LAST_API:-none}, frontend: ${LAST_FRONTEND:-none}, lambda: ${LAST_LAMBDA:-none}"
+
+          # Compare HEAD vs last deployed SHA.
+          # If no prior deploy (LAST=empty), treat everything as changed.
+          if [ -z "$LAST_API" ]; then
+            API_CHANGED=true
+          else
+            COUNT=$(git diff --name-only "$LAST_API" HEAD -- api/ | wc -l)
+            API_CHANGED=$([ "$COUNT" -gt 0 ] && echo true || echo false)
+          fi
+
+          if [ -z "$LAST_FRONTEND" ]; then
+            FRONTEND_CHANGED=true
+          else
+            COUNT=$(git diff --name-only "$LAST_FRONTEND" HEAD -- agent/ | wc -l)
+            FRONTEND_CHANGED=$([ "$COUNT" -gt 0 ] && echo true || echo false)
+          fi
+
+          if [ -z "$LAST_LAMBDA" ]; then
+            LAMBDA_CHANGED=true
+          else
+            COUNT=$(git diff --name-only "$LAST_LAMBDA" HEAD -- \
+              api/lambdas/ api/lambda-requirements.txt \
+              terraform/lambda.tf .github/workflows/ci.yml | wc -l)
+            LAMBDA_CHANGED=$([ "$COUNT" -gt 0 ] && echo true || echo false)
+          fi
+
+          echo "api=${API_CHANGED}"           >> $GITHUB_OUTPUT
+          echo "frontend=${FRONTEND_CHANGED}" >> $GITHUB_OUTPUT
+          echo "lambda=${LAMBDA_CHANGED}"     >> $GITHUB_OUTPUT
+          echo "Detected — api:${API_CHANGED} frontend:${FRONTEND_CHANGED} lambda:${LAMBDA_CHANGED}"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Frontend — lint + type check + build
@@ -304,6 +351,13 @@ jobs:
             --force-new-deployment \
             --no-cli-pager
 
+      - name: Record deployed SHA
+        run: |
+          aws ssm put-parameter \
+            --name "/${{ env.APP_NAME }}/last-deployed-api-sha" \
+            --value "${{ github.sha }}" \
+            --type String --overwrite
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Deploy Frontend — agent/ changed OR force_frontend=true
 # ─────────────────────────────────────────────────────────────────────────────
@@ -361,6 +415,13 @@ jobs:
           aws cloudfront create-invalidation \
             --distribution-id ${{ needs.terraform.outputs.cf_id }} \
             --paths "/*" --query 'Invalidation.Id' --output text
+
+      - name: Record deployed SHA
+        run: |
+          aws ssm put-parameter \
+            --name "/${{ env.APP_NAME }}/last-deployed-frontend-sha" \
+            --value "${{ github.sha }}" \
+            --type String --overwrite
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Deploy Lambda — api/lambdas/ changed OR force_lambda=true
@@ -427,3 +488,10 @@ jobs:
               --s3-key ${fn//-/_}.zip \
               --no-cli-pager
           done
+
+      - name: Record deployed SHA
+        run: |
+          aws ssm put-parameter \
+            --name "/${{ env.APP_NAME }}/last-deployed-lambda-sha" \
+            --value "${{ github.sha }}" \
+            --type String --overwrite
