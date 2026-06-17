@@ -28,6 +28,7 @@ export class ChatSocket {
   private destroyed = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectDelay = 1000;
+  private requestInFlight = false;
 
   constructor(private callbacks: WSCallbacks) {
     this.connect();
@@ -55,9 +56,13 @@ export class ChatSocket {
       try {
         const data: WSMessage = JSON.parse(event.data);
         if (data.type === "token") this.callbacks.onToken(data.content);
-        else if (data.type === "done")
+        else if (data.type === "done") {
+          this.requestInFlight = false;
           this.callbacks.onDone(data.conversation_id);
-        else if (data.type === "error") this.callbacks.onError(data.content);
+        } else if (data.type === "error") {
+          this.requestInFlight = false;
+          this.callbacks.onError(data.content);
+        }
       } catch {
         // malformed message — ignore
       }
@@ -71,6 +76,12 @@ export class ChatSocket {
       this.callbacks.onStatusChange?.(false);
       // 4001 = auth failure (bad/expired token) — don't retry
       if (event.code === 4001) return;
+      // If a request was in-flight when the connection dropped, surface the error
+      // so the UI exits the loading state instead of showing infinite dots.
+      if (this.requestInFlight) {
+        this.requestInFlight = false;
+        this.callbacks.onError("Connection lost. Please try again.");
+      }
       this.scheduleReconnect();
     };
   }
@@ -85,6 +96,7 @@ export class ChatSocket {
 
   send(message: string, conversationId?: string) {
     if (this.ws?.readyState === WebSocket.OPEN) {
+      this.requestInFlight = true;
       this.ws.send(
         JSON.stringify({ message, conversation_id: conversationId }),
       );
