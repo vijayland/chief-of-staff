@@ -34,13 +34,15 @@ def build_flow(state: str | None = None, pkce: bool = False) -> Flow:
 
 
 async def get_authorization_url() -> tuple[str, str]:
-    flow = build_flow(pkce=True)
+    # PKCE requires shared state storage; fall back to plain OAuth when Redis is unavailable
+    # (in-memory state is lost during rolling ECS deployments)
+    use_pkce = bool(settings.REDIS_URL)
+    flow = build_flow(pkce=use_pkce)
     url, state = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
         prompt="consent",
     )
-    # Store PKCE verifier in Redis (TTL 10 min) — safe across multiple workers
     if flow.code_verifier:
         await cache.set_oauth_state(state, flow.code_verifier)
     return url, state
@@ -48,8 +50,11 @@ async def get_authorization_url() -> tuple[str, str]:
 
 async def exchange_code(code: str, state: str) -> dict:
     flow = build_flow(state=state)
-    # Retrieve and delete verifier from Redis (one-time use)
     code_verifier = await cache.get_oauth_state(state)
+    # If PKCE was used but the verifier is gone (container restart/redeploy), fail fast
+    # with a clear message rather than letting Google return an obscure token error.
+    if settings.REDIS_URL and code_verifier is None:
+        raise ValueError("OAuth session expired — please sign in again.")
     flow.fetch_token(code=code, code_verifier=code_verifier)
     creds = flow.credentials
     return {

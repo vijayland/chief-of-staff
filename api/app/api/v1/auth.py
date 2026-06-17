@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import RedirectResponse
 
@@ -8,6 +10,8 @@ from app.core.security import create_access_token, create_refresh_token, decode_
 from app.dependencies import CurrentUser, DBSession
 from app.schemas.auth import GoogleAuthURLResponse, TokenResponse, UserResponse
 from app.services import auth_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -34,10 +38,18 @@ async def google_auth_url(request: Request):
 async def google_callback(
     code: str = Query(...),
     state: str = Query(...),
+    error: str = Query(None),
     db: DBSession = None,
 ):
     """Google redirects here — exchange code for JWT tokens, redirect to frontend."""
-    tokens = await auth_service.handle_google_login(db, code, state)
+    if error:
+        logger.warning("Google OAuth returned error: %s", error)
+        return RedirectResponse(url=f"{FRONTEND_URL}/auth/callback?error={error}")
+    try:
+        tokens = await auth_service.handle_google_login(db, code, state)
+    except Exception as exc:
+        logger.exception("Google OAuth callback failed: %s", exc)
+        return RedirectResponse(url=f"{FRONTEND_URL}/auth/callback?error=auth_failed")
     redirect_url = (
         f"{FRONTEND_URL}/auth/callback"
         f"?access_token={tokens['access_token']}"

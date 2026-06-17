@@ -38,6 +38,7 @@ dependencies = [
     "structlog>=24.4.0,<26",
     "python-json-logger>=2.0.0,<3",
     "google-generativeai>=0.8.0",
+    "unicorn>=2.1.4",
 ]
 
 [dependency-groups]

@@ -93,9 +93,16 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONRe
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+    # FastAPI's global exception handler bypasses CORSMiddleware, so add headers manually
+    origin = request.headers.get("origin", "")
+    headers = {}
+    if origin in settings.allowed_origins_list:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal server error"},
+        headers=headers,
     )
 
 app.include_router(api_router, prefix="/api/v1")
