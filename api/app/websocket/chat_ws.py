@@ -74,6 +74,9 @@ async def chat_websocket_handler(websocket: WebSocket, token: str):
         while True:
             raw = await websocket.receive_text()
             data = json.loads(raw)
+            # Ignore keepalive pings sent by the frontend every 25s
+            if data.get("type") == "ping":
+                continue
             user_message = data.get("message", "").strip()
             if not user_message:
                 continue

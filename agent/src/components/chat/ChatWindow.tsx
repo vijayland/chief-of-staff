@@ -24,6 +24,7 @@ export function ChatWindow({
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [activeConvId, setActiveConvId] = useState(conversationId);
   const wsRef = useRef<ChatSocket | null>(null);
+  const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [_wsConnected, setWsConnected] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const hasSentRef = useRef(false);
@@ -84,6 +85,7 @@ export function ChatWindow({
         setStreaming((prev) => prev + token);
       },
       onDone: (convId) => {
+        if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
         const content = streamingRef.current;
         streamingRef.current = "";
         setStreaming("");
@@ -106,6 +108,7 @@ export function ChatWindow({
         }
       },
       onError: (msg: string) => {
+        if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
         streamingRef.current = "";
         setStreaming("");
         setIsLoading(false);
@@ -119,7 +122,10 @@ export function ChatWindow({
       onStatusChange: (connected) => setWsConnected(connected),
     });
     wsRef.current = socket;
-    return () => socket.destroy();
+    return () => {
+      if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
+      socket.destroy();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -137,6 +143,18 @@ export function ChatWindow({
     setIsLoading(true);
     setStreaming("");
     streamingRef.current = "";
+
+    // Safety net: if no response in 45s, surface an error instead of infinite dots.
+    if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
+    loadingTimeoutRef.current = setTimeout(() => {
+      streamingRef.current = "";
+      setStreaming("");
+      setIsLoading(false);
+      setMessages((prev) => [
+        ...prev,
+        errorMessage("No response received. Please try again."),
+      ]);
+    }, 45_000);
 
     if (wsRef.current?.send(message, activeConvId)) {
       // sent via WebSocket

@@ -2,10 +2,14 @@
 
 import json
 
+import structlog
+
 from app.agent.state import AgentState
 from app.integrations.google.calendar import GoogleCalendarClient
 from app.integrations.google.gmail import GmailClient
 from app.memory.manager import MemoryManager
+
+logger = structlog.get_logger()
 
 
 async def executor_node(state: AgentState, runtime_ctx: dict) -> AgentState:
@@ -107,11 +111,16 @@ async def _dispatch(
     if name == "list_calendar_events":
         if not gcal:
             return "Google Calendar not connected."
-        events = gcal.list_events(
-            days_ahead=inp.get("days_ahead", 7),
-            max_results=inp.get("max_results", 20),
-        )
-        return json.dumps(events)
+        try:
+            events = gcal.list_events(
+                days_ahead=inp.get("days_ahead", 7),
+                max_results=inp.get("max_results", 20),
+            )
+            logger.info("calendar_tool_result", event_count=len(events), days_ahead=inp.get("days_ahead", 7))
+            return json.dumps(events)
+        except Exception as exc:
+            logger.error("calendar_tool_error", error=str(exc)[:300])
+            return f"Failed to fetch calendar events: {exc}"
 
     if name == "create_calendar_event":
         if not gcal:

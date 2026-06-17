@@ -23,12 +23,16 @@ export type WSCallbacks = {
   onStatusChange?: (connected: boolean) => void;
 };
 
+// Ping every 25s so ALB (60s idle timeout) never closes an idle connection.
+const PING_INTERVAL_MS = 25_000;
+
 export class ChatSocket {
   private ws: WebSocket | null = null;
   private destroyed = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectDelay = 1000;
   private requestInFlight = false;
+  private pingTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(private callbacks: WSCallbacks) {
     this.connect();
@@ -50,6 +54,7 @@ export class ChatSocket {
     this.ws.onopen = () => {
       this.reconnectDelay = 1000; // reset backoff on success
       this.callbacks.onStatusChange?.(true);
+      this.startPing();
     };
 
     this.ws.onmessage = (event) => {
@@ -63,6 +68,7 @@ export class ChatSocket {
           this.requestInFlight = false;
           this.callbacks.onError(data.content);
         }
+        // "pong" frames are silently ignored
       } catch {
         // malformed message — ignore
       }
@@ -73,6 +79,7 @@ export class ChatSocket {
     };
 
     this.ws.onclose = (event) => {
+      this.stopPing();
       this.callbacks.onStatusChange?.(false);
       // 4001 = auth failure (bad/expired token) — don't retry
       if (event.code === 4001) return;
@@ -84,6 +91,26 @@ export class ChatSocket {
       }
       this.scheduleReconnect();
     };
+  }
+
+  private startPing() {
+    this.stopPing();
+    this.pingTimer = setInterval(() => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        try {
+          this.ws.send(JSON.stringify({ type: "ping" }));
+        } catch {
+          // ignore — onclose will handle reconnect
+        }
+      }
+    }, PING_INTERVAL_MS);
+  }
+
+  private stopPing() {
+    if (this.pingTimer) {
+      clearInterval(this.pingTimer);
+      this.pingTimer = null;
+    }
   }
 
   private scheduleReconnect() {
@@ -111,6 +138,7 @@ export class ChatSocket {
 
   destroy() {
     this.destroyed = true;
+    this.stopPing();
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.ws?.close();
     this.ws = null;
