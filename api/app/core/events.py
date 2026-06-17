@@ -4,13 +4,11 @@ import structlog
 from fastapi import FastAPI
 from sqlalchemy import text
 
+import app.db.models  # noqa: F401
 from app.core import cache
 from app.db.base import Base
 from app.db.session import engine
 from app.memory import graph_store
-
-# Import all models so Base.metadata knows about every table
-import app.db.models  # noqa: F401
 
 logger = structlog.get_logger()
 
