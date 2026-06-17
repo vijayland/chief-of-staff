@@ -74,5 +74,6 @@ export interface TokenResponse {
 
 export type WSMessage =
   | { type: "token"; content: string }
+  | { type: "thinking"; content: string }
   | { type: "done"; conversation_id: string }
   | { type: "error"; content: string };

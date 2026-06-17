@@ -5,6 +5,7 @@ Send:    {"message": "...", "conversation_id": "optional-uuid"}
 Receive: {"type": "token", "content": "..."} chunks + {"type": "done", "conversation_id": "..."}
 """
 
+import asyncio
 import json
 import uuid
 
@@ -23,7 +24,12 @@ from app.integrations.google.calendar import GoogleCalendarClient
 from app.integrations.google.gmail import GmailClient
 from app.memory.manager import MemoryManager
 from app.services.auth_service import get_google_credentials
-from app.services.chat_service import get_conversation_history, get_or_create_conversation
+from app.services.chat_service import (
+    _OUT_OF_SCOPE_REPLY,
+    _is_allowed,
+    get_conversation_history,
+    get_or_create_conversation,
+)
 
 logger = structlog.get_logger()
 
@@ -104,7 +110,17 @@ async def chat_websocket_handler(websocket: WebSocket, token: str):
                 await websocket.send_json({"type": "error", "content": "Failed to save message. Please retry."})
                 continue
 
-            # ── Step 2: Run agent in its own session (memory queries stay in same live session) ──
+            # ── Step 2: Guard — reject off-topic questions before running agent ──
+            if not await _is_allowed(user_message):
+                async with AsyncSessionLocal() as db:
+                    db.add(Message(conversation_id=conv_id, role="assistant", content=_OUT_OF_SCOPE_REPLY))
+                    await db.commit()
+                for i in range(0, len(_OUT_OF_SCOPE_REPLY), 50):
+                    await websocket.send_json({"type": "token", "content": _OUT_OF_SCOPE_REPLY[i:i + 50]})
+                await websocket.send_json({"type": "done", "conversation_id": str(conv_id)})
+                continue
+
+            # ── Step 3: Run agent in its own session (memory queries stay in same live session) ──
             reply: str | None = None
             try:
                 async with AsyncSessionLocal() as db:
@@ -122,6 +138,7 @@ async def chat_websocket_handler(websocket: WebSocket, token: str):
                         memory_manager=mem,
                         gmail_client=gmail,
                         calendar_client=gcal,
+                        websocket=websocket,
                     )
                     reply = final_state["final_response"]
 
@@ -134,7 +151,7 @@ async def chat_websocket_handler(websocket: WebSocket, token: str):
                 await websocket.send_json({"type": "error", "content": _user_friendly_error(exc)})
                 continue
 
-            # ── Step 3: Stream reply to client ──
+            # ── Step 4: Stream reply to client ──
             if not reply:
                 # Agent completed but produced no text — surface a visible error so
                 # the user isn't left staring at disappeared loading dots.
@@ -153,6 +170,9 @@ async def chat_websocket_handler(websocket: WebSocket, token: str):
 
     except WebSocketDisconnect:
         logger.info("ws_disconnected", user_id=str(user_id))
+    except asyncio.CancelledError:
+        # Server is shutting down — exit cleanly without logging an error
+        logger.info("ws_shutdown", user_id=str(user_id))
     except Exception as exc:
         logger.error("ws_fatal", error=str(exc))
         try:

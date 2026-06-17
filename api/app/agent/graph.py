@@ -61,6 +61,7 @@ async def run_agent(
     memory_manager: MemoryManager,
     gmail_client: GmailClient | None = None,
     calendar_client: GoogleCalendarClient | None = None,
+    websocket=None,
 ) -> AgentState:
     """Retrieve memory, run the graph, and return the final state."""
 
@@ -84,6 +85,7 @@ async def run_agent(
         "gmail_client": gmail_client,
         "calendar_client": calendar_client,
         "memory_manager": memory_manager,
+        "websocket": websocket,
     }
 
     compiled = build_graph(runtime_ctx)

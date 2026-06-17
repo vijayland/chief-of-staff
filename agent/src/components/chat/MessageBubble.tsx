@@ -84,7 +84,7 @@ export function MessageBubble({
   );
 }
 
-export function StreamingBubble({ content }: { content: string }) {
+export function StreamingBubble({ content, thinking }: { content: string; thinking?: string }) {
   return (
     <div className="flex gap-3">
       <div className="shrink-0 mt-0.5">
@@ -101,15 +101,31 @@ export function StreamingBubble({ content }: { content: string }) {
         >
           {content ? (
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+          ) : thinking ? (
+            <ThinkingIndicator label={thinking} />
           ) : (
-            <span className="flex gap-1 items-center py-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-text-muted animate-bounce [animation-delay:0ms]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-text-muted animate-bounce [animation-delay:150ms]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-text-muted animate-bounce [animation-delay:300ms]" />
-            </span>
+            <ThinkingIndicator />
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+function ThinkingIndicator({ label }: { label?: string }) {
+  return (
+    <span className="flex items-center gap-2 py-0.5">
+      <span className="flex gap-1 items-center">
+        <span className="w-1.5 h-1.5 rounded-full bg-text-muted"
+          style={{ animation: "claudePulse 1.4s ease-in-out infinite", animationDelay: "0ms" }} />
+        <span className="w-1.5 h-1.5 rounded-full bg-text-muted"
+          style={{ animation: "claudePulse 1.4s ease-in-out infinite", animationDelay: "200ms" }} />
+        <span className="w-1.5 h-1.5 rounded-full bg-text-muted"
+          style={{ animation: "claudePulse 1.4s ease-in-out infinite", animationDelay: "400ms" }} />
+      </span>
+      {label && (
+        <span className="text-[11px] text-text-muted italic">{label}</span>
+      )}
+    </span>
   );
 }

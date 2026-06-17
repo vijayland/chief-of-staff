@@ -20,11 +20,13 @@ export function ChatWindow({
 }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [streaming, setStreaming] = useState("");
+  const [thinking, setThinking] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [activeConvId, setActiveConvId] = useState(conversationId);
   const wsRef = useRef<ChatSocket | null>(null);
   const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelledRef = useRef(false);
   const [_wsConnected, setWsConnected] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const hasSentRef = useRef(false);
@@ -82,14 +84,22 @@ export function ChatWindow({
   useEffect(() => {
     const socket = new ChatSocket({
       onToken: (token) => {
+        if (cancelledRef.current) return;
+        setThinking("");  // clear status once real tokens arrive
         streamingRef.current += token;
         setStreaming((prev) => prev + token);
       },
+      onThinking: (msg) => {
+        if (cancelledRef.current) return;
+        setThinking(msg);
+      },
       onDone: (convId) => {
+        if (cancelledRef.current) { cancelledRef.current = false; return; }
         if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
         const content = streamingRef.current;
         streamingRef.current = "";
         setStreaming("");
+        setThinking("");
         if (content) {
           setMessages((msgs) => [
             ...msgs,
@@ -112,6 +122,7 @@ export function ChatWindow({
         if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
         streamingRef.current = "";
         setStreaming("");
+        setThinking("");
         setIsLoading(false);
         if (hasSentRef.current) {
           setMessages((prev) => [
@@ -130,6 +141,23 @@ export function ChatWindow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function handleStop() {
+    cancelledRef.current = true;
+    if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
+    const partial = streamingRef.current;
+    streamingRef.current = "";
+    setStreaming("");
+    setThinking("");
+    setIsLoading(false);
+    // Keep any partial content that already streamed in
+    if (partial) {
+      setMessages((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), role: "assistant", content: partial, created_at: new Date().toISOString() },
+      ]);
+    }
+  }
+
   function handleSend(message: string) {
     hasSentRef.current = true;
     lastUserMessageRef.current = message;
@@ -144,7 +172,9 @@ export function ChatWindow({
     ]);
     setIsLoading(true);
     setStreaming("");
+    setThinking("");
     streamingRef.current = "";
+    cancelledRef.current = false;
 
     // Safety net: if no response in 45s, surface an error instead of infinite dots.
     if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
@@ -214,7 +244,7 @@ export function ChatWindow({
                 />
               ))}
               {(isLoading || streaming) && (
-                <StreamingBubble content={streaming} />
+                <StreamingBubble content={streaming} thinking={thinking} />
               )}
             </>
           )}
@@ -225,6 +255,7 @@ export function ChatWindow({
       <div className="max-w-3xl mx-auto w-full px-4 sm:px-6 pb-4">
         <ChatInput
           onSend={handleSend}
+          onStop={handleStop}
           disabled={isLoading || isHistoryLoading}
         />
       </div>

@@ -23,6 +23,7 @@ function getWsBase(): string {
 
 export type WSCallbacks = {
   onToken: (token: string) => void;
+  onThinking?: (msg: string) => void;
   onDone: (conversationId: string) => void;
   onError: (msg: string) => void;
   onStatusChange?: (connected: boolean) => void;
@@ -85,6 +86,7 @@ export class ChatSocket {
       try {
         const data: WSMessage = JSON.parse(event.data);
         if (data.type === "token") this.callbacks.onToken(data.content);
+        else if (data.type === "thinking") this.callbacks.onThinking?.(data.content);
         else if (data.type === "done") {
           this.requestInFlight = false;
           this.callbacks.onDone(data.conversation_id);

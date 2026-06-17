@@ -13,6 +13,7 @@ Postgres ↔ Redis sync strategy (Write-Through):
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -70,6 +71,8 @@ async def set(key: str, value: Any, ttl_seconds: int = 300) -> None:
         try:
             await r.set(key, data, ex=ttl_seconds)
             return
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             logger.warning("Redis set failed, falling back to memory: %s", exc)
     _memory_store[key] = data
@@ -82,6 +85,8 @@ async def get(key: str) -> Any | None:
             raw = await r.get(key)
             if raw is not None:
                 return json.loads(raw)
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             logger.warning("Redis get failed, falling back to memory: %s", exc)
     raw = _memory_store.get(key)
@@ -95,6 +100,8 @@ async def delete(key: str) -> None:
     if r:
         try:
             await r.delete(key)
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             logger.warning("Redis delete failed: %s", exc)
     _memory_store.pop(key, None)
@@ -109,6 +116,8 @@ async def delete_pattern(pattern: str) -> None:
             if keys:
                 await r.delete(*keys)
             return
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             logger.warning("Redis delete_pattern failed: %s", exc)
     # In-memory fallback: match manually

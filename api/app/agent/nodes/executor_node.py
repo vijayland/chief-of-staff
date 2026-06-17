@@ -12,22 +12,57 @@ from app.memory.manager import MemoryManager
 logger = structlog.get_logger()
 
 
+def _thinking_msg(name: str, inp: dict) -> str:
+    """Human-readable status shown in the chat bubble while the tool runs."""
+    if name == "send_email":
+        return f"Sending email to {inp.get('to', '')}..."
+    if name == "draft_email":
+        return f"Drafting email to {inp.get('to', '')}..."
+    if name == "list_emails":
+        return "Checking your inbox..."
+    if name == "read_email":
+        return "Reading email..."
+    if name == "list_calendar_events":
+        return "Checking your calendar..."
+    if name == "create_calendar_event":
+        return f"Creating event \"{inp.get('title', 'event')}\"..."
+    if name == "update_calendar_event":
+        return "Updating calendar event..."
+    if name == "delete_calendar_event":
+        return "Deleting calendar event..."
+    if name == "search_memory":
+        return "Searching your notes..."
+    if name == "store_memory":
+        return "Saving to memory..."
+    return f"Running {name}..."
+
+
 async def executor_node(state: AgentState, runtime_ctx: dict) -> AgentState:
     """
     runtime_ctx is injected by the graph runner and contains:
       - gmail_client: GmailClient | None
       - calendar_client: GoogleCalendarClient | None
       - memory_manager: MemoryManager
+      - websocket: WebSocket | None  (optional — sends thinking messages to client)
     """
     gmail: GmailClient | None = runtime_ctx.get("gmail_client")
     gcal: GoogleCalendarClient | None = runtime_ctx.get("calendar_client")
     mem: MemoryManager = runtime_ctx["memory_manager"]
+    websocket = runtime_ctx.get("websocket")
 
     tool_results = []
 
     for call in state.get("tool_outputs", []):
         name = call["name"]
         inp = call["input"]
+
+        # Send live status to the client before the (potentially slow) tool call
+        if websocket is not None:
+            try:
+                await websocket.send_json({"type": "thinking", "content": _thinking_msg(name, inp)})
+            except Exception:
+                pass  # WS may have closed; don't let this crash the agent
+
         result = await _dispatch(name, inp, gmail, gcal, mem)
         # OpenAI/Groq tool result format — one message per tool call
         tool_results.append({

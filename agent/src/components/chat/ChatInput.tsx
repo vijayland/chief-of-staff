@@ -1,16 +1,18 @@
 "use client";
 
-import { ArrowUp, Loader2 } from "lucide-react";
+import { ArrowUp, Square } from "lucide-react";
 import { type KeyboardEvent, useRef, useState } from "react";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
+  onStop?: () => void;
   disabled?: boolean;
   placeholder?: string;
 }
 
 export function ChatInput({
   onSend,
+  onStop,
   disabled,
   placeholder = "Message your assistant…",
 }: ChatInputProps) {
@@ -81,26 +83,34 @@ export function ChatInput({
               new line
             </span>
 
-            {/* Send button */}
-            <button
-              type="button"
-              onClick={submit}
-              disabled={!hasText || disabled}
-              className={`
-                w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150
-                ${
-                  hasText && !disabled
+            {/* Stop / Send button */}
+            {disabled ? (
+              <button
+                type="button"
+                onClick={onStop}
+                className="w-8 h-8 rounded-full flex items-center justify-center
+                  bg-text-primary text-white hover:bg-[#333] shadow-sm
+                  hover:scale-105 active:scale-95 transition-all duration-150"
+                title="Stop generating"
+              >
+                <Square className="w-3.5 h-3.5 fill-white" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={submit}
+                disabled={!hasText}
+                className={`
+                  w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150
+                  ${hasText
                     ? "bg-text-primary text-white hover:bg-[#333] shadow-sm hover:scale-105 active:scale-95"
                     : "bg-[#e8e8e8] text-[#b0b0b0] cursor-not-allowed"
-                }
-              `}
-            >
-              {disabled ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
+                  }
+                `}
+              >
                 <ArrowUp className="w-4 h-4" />
-              )}
-            </button>
+              </button>
+            )}
           </div>
         </div>
       </div>
