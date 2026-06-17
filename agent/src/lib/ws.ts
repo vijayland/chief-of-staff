@@ -86,7 +86,8 @@ export class ChatSocket {
       try {
         const data: WSMessage = JSON.parse(event.data);
         if (data.type === "token") this.callbacks.onToken(data.content);
-        else if (data.type === "thinking") this.callbacks.onThinking?.(data.content);
+        else if (data.type === "thinking")
+          this.callbacks.onThinking?.(data.content);
         else if (data.type === "done") {
           this.requestInFlight = false;
           this.callbacks.onDone(data.conversation_id);

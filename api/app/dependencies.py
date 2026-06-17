@@ -1,10 +1,10 @@
 import uuid
+from typing import Annotated
 
 from fastapi import Depends, Header
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import make_transient
-from typing import Annotated
 
 from app.core.cache import get_user, invalidate_user, set_user
 from app.core.exceptions import ForbiddenError, UnauthorizedError

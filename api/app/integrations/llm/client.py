@@ -97,7 +97,8 @@ async def get_embedding(text: str) -> list[float]:
       Benefit: repeated queries ("check my calendar", "what do I have today?")
       hit cache instead of paying OpenAI each time.
     """
-    from app.core.cache import get_embedding as cache_get, set_embedding as cache_set
+    from app.core.cache import get_embedding as cache_get
+    from app.core.cache import set_embedding as cache_set
 
     text = text.replace("\n", " ").strip()
     dims = settings.MEMORY_EMBEDDING_DIM

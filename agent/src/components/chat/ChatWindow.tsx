@@ -85,7 +85,7 @@ export function ChatWindow({
     const socket = new ChatSocket({
       onToken: (token) => {
         if (cancelledRef.current) return;
-        setThinking("");  // clear status once real tokens arrive
+        setThinking(""); // clear status once real tokens arrive
         streamingRef.current += token;
         setStreaming((prev) => prev + token);
       },
@@ -94,7 +94,10 @@ export function ChatWindow({
         setThinking(msg);
       },
       onDone: (convId) => {
-        if (cancelledRef.current) { cancelledRef.current = false; return; }
+        if (cancelledRef.current) {
+          cancelledRef.current = false;
+          return;
+        }
         if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
         const content = streamingRef.current;
         streamingRef.current = "";
@@ -153,7 +156,12 @@ export function ChatWindow({
     if (partial) {
       setMessages((prev) => [
         ...prev,
-        { id: crypto.randomUUID(), role: "assistant", content: partial, created_at: new Date().toISOString() },
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: partial,
+          created_at: new Date().toISOString(),
+        },
       ]);
     }
   }

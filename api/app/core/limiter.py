@@ -1,8 +1,9 @@
 """Rate limiting — slowapi backed by Redis (falls back to memory if Redis unavailable)."""
 
-from app.config import settings
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+
+from app.config import settings
 
 limiter = Limiter(
     key_func=get_remote_address,

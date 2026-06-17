@@ -102,9 +102,10 @@ export function ChatInput({
                 disabled={!hasText}
                 className={`
                   w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150
-                  ${hasText
-                    ? "bg-text-primary text-white hover:bg-[#333] shadow-sm hover:scale-105 active:scale-95"
-                    : "bg-[#e8e8e8] text-[#b0b0b0] cursor-not-allowed"
+                  ${
+                    hasText
+                      ? "bg-text-primary text-white hover:bg-[#333] shadow-sm hover:scale-105 active:scale-95"
+                      : "bg-[#e8e8e8] text-[#b0b0b0] cursor-not-allowed"
                   }
                 `}
               >

@@ -84,7 +84,13 @@ export function MessageBubble({
   );
 }
 
-export function StreamingBubble({ content, thinking }: { content: string; thinking?: string }) {
+export function StreamingBubble({
+  content,
+  thinking,
+}: {
+  content: string;
+  thinking?: string;
+}) {
   return (
     <div className="flex gap-3">
       <div className="shrink-0 mt-0.5">
@@ -116,12 +122,27 @@ function ThinkingIndicator({ label }: { label?: string }) {
   return (
     <span className="flex items-center gap-2 py-0.5">
       <span className="flex gap-1 items-center">
-        <span className="w-1.5 h-1.5 rounded-full bg-text-muted"
-          style={{ animation: "claudePulse 1.4s ease-in-out infinite", animationDelay: "0ms" }} />
-        <span className="w-1.5 h-1.5 rounded-full bg-text-muted"
-          style={{ animation: "claudePulse 1.4s ease-in-out infinite", animationDelay: "200ms" }} />
-        <span className="w-1.5 h-1.5 rounded-full bg-text-muted"
-          style={{ animation: "claudePulse 1.4s ease-in-out infinite", animationDelay: "400ms" }} />
+        <span
+          className="w-1.5 h-1.5 rounded-full bg-text-muted"
+          style={{
+            animation: "claudePulse 1.4s ease-in-out infinite",
+            animationDelay: "0ms",
+          }}
+        />
+        <span
+          className="w-1.5 h-1.5 rounded-full bg-text-muted"
+          style={{
+            animation: "claudePulse 1.4s ease-in-out infinite",
+            animationDelay: "200ms",
+          }}
+        />
+        <span
+          className="w-1.5 h-1.5 rounded-full bg-text-muted"
+          style={{
+            animation: "claudePulse 1.4s ease-in-out infinite",
+            animationDelay: "400ms",
+          }}
+        />
       </span>
       {label && (
         <span className="text-[11px] text-text-muted italic">{label}</span>
