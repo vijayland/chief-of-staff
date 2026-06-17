@@ -48,45 +48,48 @@ async def memory_writer_node(state: AgentState, runtime_ctx: dict) -> AgentState
             raw = raw.split("```")[1].lstrip("json").strip()
 
         extracted = json.loads(raw)
+
+        facts_count = 0
+        prefs_count = 0
+        style_count = 0
+
+        for fact in extracted.get("facts", []):
+            if isinstance(fact, str) and fact:
+                await mem.store_fact(fact, source="chat", importance=0.7)
+                facts_count += 1
+
+        for pref in extracted.get("preferences", []):
+            if isinstance(pref, str) and pref:
+                await mem.store_fact(pref, source="chat", importance=0.85)
+                prefs_count += 1
+
+        for pattern in extracted.get("style_patterns", []):
+            if isinstance(pattern, str) and pattern:
+                await mem.store_style(pattern, source="chat")
+                style_count += 1
+
+        for rel in extracted.get("relations", []):
+            try:
+                await mem.upsert_graph(
+                    from_entity=rel["from"],
+                    from_type=rel["from_type"],
+                    relation=rel["relation"],
+                    to_entity=rel["to"],
+                    to_type=rel["to_type"],
+                )
+            except Exception as exc:
+                logger.warning("graph_upsert_failed", rel=rel, error=str(exc))
+
+        logger.info(
+            "memory_extracted",
+            facts=facts_count,
+            preferences=prefs_count,
+            style_patterns=style_count,
+            relations=len(extracted.get("relations", [])),
+        )
     except Exception as exc:
         logger.warning("memory_extraction_failed", error=str(exc))
-        return state
 
-    facts_count = 0
-    prefs_count = 0
-    style_count = 0
-
-    for fact in extracted.get("facts", []):
-        await mem.store_fact(fact, source="chat", importance=0.7)
-        facts_count += 1
-
-    for pref in extracted.get("preferences", []):
-        await mem.store_fact(pref, source="chat", importance=0.85)
-        prefs_count += 1
-
-    for pattern in extracted.get("style_patterns", []):
-        await mem.store_style(pattern, source="chat")
-        style_count += 1
-
-    for rel in extracted.get("relations", []):
-        try:
-            await mem.upsert_graph(
-                from_entity=rel["from"],
-                from_type=rel["from_type"],
-                relation=rel["relation"],
-                to_entity=rel["to"],
-                to_type=rel["to_type"],
-            )
-        except Exception as exc:
-            logger.warning("graph_upsert_failed", rel=rel, error=str(exc))
-
-    logger.info(
-        "memory_extracted",
-        facts=facts_count,
-        preferences=prefs_count,
-        style_patterns=style_count,
-        relations=len(extracted.get("relations", [])),
-    )
     return state
 
 
