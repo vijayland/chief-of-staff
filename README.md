@@ -22,6 +22,80 @@ An agentic AI assistant that manages your email, calendar, and institutional mem
 
 ---
 
+## DevOps Diagram
+
+> 📊 **[Open Interactive DevOps Diagram](./devops-diagram.html)** — full visual architecture (open in browser)
+
+```mermaid
+flowchart TD
+    DEV["👨‍💻 Developer\nLocal Machine"]
+    GH["🐙 GitHub\nmain branch"]
+    CI["⚡ GitHub Actions\nci.yml · OIDC Auth"]
+
+    subgraph PIPELINE["CI/CD Pipeline"]
+        P1["🔍 Detect changed paths\nvs last deployed SHA in SSM"]
+        P2["🧪 Lint + Test\nruff · biome · pytest"]
+        P3["🏗️ Terraform Apply\nif terraform/** changed"]
+        P1 --> P2 --> P3
+    end
+
+    subgraph AWS["☁️ AWS Infrastructure — us-east-1"]
+        subgraph FRONT["Frontend"]
+            CF["🌐 CloudFront CDN\nHTTPS"]
+            S3["🪣 S3 Bucket\nNext.js static export"]
+            CF --> S3
+        end
+        subgraph BACK["Backend"]
+            ALB["⚖️ ALB\nLoad Balancer"]
+            ECS["🐳 ECS Fargate\nFastAPI · 0.5vCPU · 1GB"]
+            ECR["📦 ECR\nDocker images"]
+            ALB --> ECS
+        end
+        subgraph WORKERS["Background Jobs"]
+            L1["📧 email_sync λ\nevery 5 min"]
+            L2["📅 calendar_sync λ\nevery 15 min"]
+            L3["🧹 memory_consolidation λ\nnightly 2 AM UTC"]
+        end
+        SSM["🔐 SSM Parameter Store\nSecrets + Config"]
+    end
+
+    subgraph DATA["Data + External Services"]
+        PG["🐘 Neon Postgres\n+ pgvector · memory_nodes"]
+        RD["⚡ Redis Cloud\n5 cache namespaces"]
+        OAI["🤖 OpenAI\nGPT-4o · mini · embeddings"]
+        GM["📨 Gmail API"]
+        GC["📆 Calendar API"]
+    end
+
+    subgraph AGENT["🧠 LangGraph Agent"]
+        AG1["🛡️ Topic Guard\ngpt-4o-mini classifier"]
+        AG2["🔀 router_node\nGPT-4o intent detection"]
+        AG3["🔧 executor_node\ntool dispatch + live status"]
+        AG4["💾 memory_writer\nextract + store facts"]
+        AG1 --> AG2 --> AG3 --> AG2
+        AG2 --> AG4
+    end
+
+    USER["👤 User Browser\nNext.js · WebSocket · REST"]
+
+    DEV -->|git push main| GH -->|trigger| CI
+    CI --> PIPELINE
+    PIPELINE -->|Docker → ECR → ECS| BACK
+    PIPELINE -->|npm build → S3 → invalidate| FRONT
+    PIPELINE -->|pip → zip → Lambda| WORKERS
+    PIPELINE --> BACK
+
+    ECS --> AGENT
+    AGENT --> PG & RD & OAI & GM & GC
+    WORKERS --> PG & OAI & GM & GC
+    SSM --> ECS
+
+    CF -->|/api/* /ws/*| ALB
+    USER -->|HTTPS / WSS| CF
+```
+
+---
+
 ## Architecture
 
 ```
